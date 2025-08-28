@@ -1,5 +1,246 @@
-# space-api
+# Space API
 
-Identifier: space-api
+A Node.js Express server that provides access to NASA space data APIs with intelligent caching for optimal performance.
 
-Created: Thu Aug 28 12:53:53 UTC 2025
+## 🚀 Features
+
+- **Space Weather Data**: Solar flares, coronal mass ejections (CMEs), and solar energetic particles (SEPs)
+- **Earth Imagery**: Latest satellite images of Earth from NASA's EPIC API
+- **Near Earth Objects**: Asteroid and comet data from NASA's NEO API
+- **Smart Caching**: Built-in caching system to reduce API calls and improve response times
+- **Date Filtering**: Optional date range parameters for time-sensitive data
+- **Cache Management**: Endpoints to monitor and control cache behavior
+
+## 🛠️ Tech Stack
+
+- **Node.js** with ES modules
+- **Express.js** web framework
+- **NASA APIs** for space data
+- **Custom caching system** for performance optimization
+
+## 📋 Prerequisites
+
+- Node.js (v14 or higher)
+- NASA API key ([Get one here](https://api.nasa.gov/))
+
+## 🚀 Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd space-api
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Create a `.env` file in the root directory:
+```env
+NASA_API_KEY=your_nasa_api_key_here
+```
+
+4. Start the server:
+```bash
+# Development mode with auto-reload
+npm run dev
+
+# Production mode
+npm start
+```
+
+The server will start on `http://localhost:3102`
+
+## 📡 API Endpoints
+
+### Space Weather Data
+
+#### GET `/solarflares`
+Retrieves solar flare data from NASA's DONKI API.
+
+**Query Parameters:**
+- `startDate` (optional): Start date in YYYY-MM-DD format
+- `endDate` (optional): End date in YYYY-MM-DD format
+
+**Example:**
+```bash
+GET /solarflares?startDate=2024-01-01&endDate=2024-01-07
+```
+
+#### GET `/sep`
+Retrieves Solar Energetic Particle (SEP) data.
+
+**Query Parameters:**
+- `startDate` (optional): Start date in YYYY-MM-DD format
+- `endDate` (optional): End date in YYYY-MM-DD format
+
+**Example:**
+```bash
+GET /sep?startDate=2024-01-01
+```
+
+#### GET `/cmes`
+Retrieves Coronal Mass Ejection (CME) data.
+
+**Query Parameters:**
+- `startDate` (optional): Start date in YYYY-MM-DD format
+- `endDate` (optional): End date in YYYY-MM-DD format
+
+**Example:**
+```bash
+GET /cmes?startDate=2024-01-01&endDate=2024-01-07
+```
+
+### Earth Data
+
+#### GET `/earthnow`
+Retrieves the latest Earth imagery from NASA's EPIC API.
+
+**No parameters required.**
+
+**Example:**
+```bash
+GET /earthnow
+```
+
+### Near Earth Objects
+
+#### GET `/neos`
+Retrieves Near Earth Object (asteroid and comet) data.
+
+**Query Parameters:**
+- `startDate` (optional): Start date in YYYY-MM-DD format
+- `endDate` (optional): End date in YYYY-MM-DD format
+
+**Example:**
+```bash
+GET /neos?startDate=2024-01-01&endDate=2024-01-07
+```
+
+### Cache Management
+
+#### GET `/cache/status`
+Returns the current status of all cached data including timestamps and cache keys.
+
+**Example:**
+```bash
+GET /cache/status
+```
+
+#### POST `/cache/refresh`
+Forces a refresh of cached data.
+
+**Request Body:**
+```json
+{
+  "key": "solarflares"  // Optional: specific cache key to refresh
+}
+```
+
+**Examples:**
+```bash
+# Refresh specific cache entry
+POST /cache/refresh
+Content-Type: application/json
+
+{
+  "key": "solarflares"
+}
+
+# Refresh all cache entries
+POST /cache/refresh
+Content-Type: application/json
+
+{}
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+- `NASA_API_KEY`: Your NASA API key (required)
+
+### Server Configuration
+
+- **Port**: 3102 (configurable in `server.js`)
+- **Cache TTL**: Configurable in the cache module
+
+## 📊 Data Sources
+
+This API integrates with several NASA APIs:
+
+- **DONKI API**: Solar flares, CMEs, and SEPs
+- **EPIC API**: Earth imagery
+- **NEO API**: Near Earth Objects
+
+## 🗄️ Caching System
+
+The API includes a sophisticated caching system that:
+
+- Automatically caches responses to reduce API calls
+- Respects NASA API rate limits
+- Provides cache status monitoring
+- Allows manual cache refresh
+- Improves response times for frequently requested data
+
+## 🚨 Error Handling
+
+All endpoints include proper error handling and will return appropriate HTTP status codes and error messages if:
+
+- NASA API is unavailable
+- Invalid dates are provided
+- API key is invalid or missing
+- Network errors occur
+
+## 📝 Usage Examples
+
+### Using cURL
+
+```bash
+# Get solar flares for the last week
+curl "http://localhost:3102/solarflares"
+
+# Get CMEs for a specific date range
+curl "http://localhost:3102/cmes?startDate=2024-01-01&endDate=2024-01-07"
+
+# Get latest Earth imagery
+curl "http://localhost:3102/earthnow"
+
+# Check cache status
+curl "http://localhost:3102/cache/status"
+```
+
+### Using JavaScript/Fetch
+
+```javascript
+// Get solar flares
+const response = await fetch('http://localhost:3102/solarflares');
+const solarFlares = await response.json();
+
+// Get NEOs with date filtering
+const neosResponse = await fetch('http://localhost:3102/neos?startDate=2024-01-01');
+const neos = await neosResponse.json();
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the ISC License.
+
+## 🙏 Acknowledgments
+
+- [NASA APIs](https://api.nasa.gov/) for providing access to space data
+- Express.js community for the excellent web framework
+- Node.js community for the runtime environment
+
+## 📞 Support
+
+For issues, questions, or contributions, please open an issue on the repository or contact the development team.

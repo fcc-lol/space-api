@@ -30,7 +30,7 @@ app.get('/solarflares', async (req, res) => {
   
   if (!response) {
     // Fetch fresh data if not in cache
-    response = await fetchData('solarFlares');
+    response = await fetchData('solarFlares', req.query.startDate || null, req.query.endDate || null);
     cache.set(cacheKey, response);
   }
   
@@ -46,7 +46,7 @@ app.get('/sep', async (req, res) => {
   
   if (!response) {
     // Fetch fresh data if not in cache
-    response = await fetchData('SEP');
+    response = await fetchData('SEP', req.query.startDate || null, req.query.endDate || null);
     cache.set(cacheKey, response);
   }
   
@@ -62,7 +62,7 @@ app.get('/cmes', async (req, res) => {
   
   if (!response) {
     // Fetch fresh data if not in cache
-    response = await fetchData('CMEs');
+    response = await fetchData('CMEs', req.query.startDate || null, req.query.endDate || null);
     cache.set(cacheKey, response);
   }
   
