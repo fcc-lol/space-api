@@ -1,0 +1,9 @@
+{
+  "service_id": "space-api",
+  "service_name": "space-api",
+  "domain": "https://space-api.danzaharia.com",
+  "host": "localhost",
+  "port": "3102",
+  "author": "dan",
+  "created_on": "Thu Aug 28 12:53:52 UTC 2025"
+}
