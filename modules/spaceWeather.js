@@ -13,7 +13,6 @@ const urls = {
 export const fetchData = async (data, startDate, endDate) => {
     const dates = getDates();
     const url = `${urls[data]}?startDate=${startDate || dates.oneWeekAgo}&endDate=${endDate || dates.today}&api_key=${process.env.NASA_API_KEY}`;
-    console.log(url);
     
     try {
         const response = await fetch(url);

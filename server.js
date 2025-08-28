@@ -11,16 +11,19 @@ app.get('/', (req, res) => {
 });
 
 app.get('/solarflares', async (req, res) => {
+  console.log("Getting solar flares");
   const response = await fetchData('solarFlares');
   res.json(response);
 });
 
 app.get('/sep', async (req, res) => {
+  console.log("Getting SEPs")
   const response = await fetchData('SEP');
   res.json(response);
 });
 
 app.get('/cmes', async (req, res) => {
+  console.log("Getting coronal mass ejections")
   const response = await fetchData('CMEs');
   res.json(response);
 });
