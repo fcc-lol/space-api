@@ -92,30 +92,52 @@ Retrieves Coronal Mass Ejection (CME) data.
 GET /cmes?startDate=2024-01-01&endDate=2024-01-07
 ```
 
-### Earth Data
+### Earth Imagery
 
-#### GET `/earthnow`
-Retrieves the latest Earth imagery from NASA's EPIC API.
+#### GET `/earthnow/imageurl`
+Retrieves the URL for the latest Earth imagery from NASA's EPIC API.
+
+**Query Parameters:**
+- `date` (optional): Specific date in YYYY-MM-DD format
+- `variant` (optional): Image variant ('natural' or 'enhanced'). Defaults to 'natural'
+
+**Example:**
+```bash
+GET /earthnow/imageurl?date=2024-01-01&variant=natural
+```
+
+#### GET `/earthnow/image`
+Retrieves the actual Earth image data from NASA's EPIC API.
+
+**Query Parameters:**
+- `date` (optional): Specific date in YYYY-MM-DD format
+- `variant` (optional): Image variant ('natural' or 'enhanced'). Defaults to 'natural'
+
+**Example:**
+```bash
+GET /earthnow/image?date=2024-01-01&variant=enhanced
+```
+
+#### GET `/earthnow/metadata`
+Retrieves metadata about the latest Earth imagery.
 
 **No parameters required.**
 
 **Example:**
 ```bash
-GET /earthnow
+GET /earthnow/metadata
 ```
 
 ### Near Earth Objects
 
 #### GET `/neos`
-Retrieves Near Earth Object (asteroid and comet) data.
+Retrieves Near Earth Object (asteroid and comet) data for the past week.
 
-**Query Parameters:**
-- `startDate` (optional): Start date in YYYY-MM-DD format
-- `endDate` (optional): End date in YYYY-MM-DD format
+**No parameters currently supported** (returns data for the past week by default).
 
 **Example:**
 ```bash
-GET /neos?startDate=2024-01-01&endDate=2024-01-07
+GET /neos
 ```
 
 ### Cache Management
@@ -204,8 +226,14 @@ curl "http://localhost:3102/solarflares"
 # Get CMEs for a specific date range
 curl "http://localhost:3102/cmes?startDate=2024-01-01&endDate=2024-01-07"
 
-# Get latest Earth imagery
-curl "http://localhost:3102/earthnow"
+# Get latest Earth imagery URL
+curl "http://localhost:3102/earthnow/imageurl"
+
+# Get actual Earth image data
+curl "http://localhost:3102/earthnow/image"
+
+# Get Earth imagery metadata
+curl "http://localhost:3102/earthnow/metadata"
 
 # Check cache status
 curl "http://localhost:3102/cache/status"
@@ -218,9 +246,13 @@ curl "http://localhost:3102/cache/status"
 const response = await fetch('http://localhost:3102/solarflares');
 const solarFlares = await response.json();
 
-// Get NEOs with date filtering
-const neosResponse = await fetch('http://localhost:3102/neos?startDate=2024-01-01');
+// Get NEOs data
+const neosResponse = await fetch('http://localhost:3102/neos');
 const neos = await neosResponse.json();
+
+// Get Earth imagery URL
+const earthUrlResponse = await fetch('http://localhost:3102/earthnow/imageurl');
+const earthImageUrl = await earthUrlResponse.json();
 ```
 
 ## 🤝 Contributing
