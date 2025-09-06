@@ -93,7 +93,8 @@ app.get('/earthnow/imageurl', async (req, res) => {
   try {
     const date = req.query.date || null;
     const variant = req.query.variant || 'natural';
-    const response = await getEarthImageURL(date, variant);
+    const index = req.query.index || 0;
+    const response = await getEarthImageURL(date, variant, index);
     res.json(response);
   } catch (error) {
     console.error('Error serving Earth image:', error);
@@ -121,6 +122,7 @@ app.get('/earthnow/image', async (req, res) => {
 app.get('/earthnow/metadata', async (req, res) => {
   const date = req.query.date || 'latest';
   const variant = req.query.variant || 'natural';
+  const index = req.query.index || 0;
 
   console.log(`Getting image for date ${date} and variant ${variant}`)
 
@@ -130,7 +132,7 @@ app.get('/earthnow/metadata', async (req, res) => {
 
   if (!response) {
     // Fetch fresh data if not in cache
-    response = await getEarthImageryMetadata(date, variant);
+    response = await getEarthImageryMetadata(date, variant, index);
     cache.set(cacheKey, response);
   }
 
