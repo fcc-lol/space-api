@@ -91,7 +91,7 @@ app.get('/earthnow/list', async (req, res) => {
 
 app.get('/earthnow/imageurl', async (req, res) => {
   try {
-    const date = req.query.date || null;
+    const date = req.query.date || 'latest';
     const variant = req.query.variant || 'natural';
     const index = req.query.index || 0;
     const response = await getEarthImageURL(date, variant, index);
