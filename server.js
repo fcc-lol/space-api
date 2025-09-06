@@ -3,7 +3,6 @@ import {fetchData} from './modules/spaceWeather.js';
 import {getEarthImageURL, getEarthImage, getEarthImageryMetadata} from './modules/earthNow.js';
 import {getNeoFeed} from './modules/nearEarthObjects.js';
 import cache from './modules/cache.js';
-
 const app = express();
 const port = 3102;
 
@@ -69,19 +68,32 @@ app.get('/cmes', async (req, res) => {
   res.json(response);
 });
 
-app.get('/earthnow/imageurl', async (req, res) => {
+app.get('/earthnow/list', async (req, res) => {
   try {
-    // Check cache first
-    const cacheKey = 'earthnow_imageurl';
+    const date = req.query.date || 'latest';
+    const variant = req.query.variant || 'natural';
+
+    const cacheKey = `earthnow_list_${date}_${variant}`;
     let response = cache.get(cacheKey);
-    
+
     if (!response) {
-      // Fetch fresh data if not in cache
-      response = await getEarthImageURL(req.query.date || null, req.query.variant || 'natural');
+      response = await getEarthImageryMetadata(date, variant);
       cache.set(cacheKey, response);
     }
-    
-    // Set appropriate headers for image data
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching Earth imagery list:', error);
+    res.status(500).json({ error: 'Failed to fetch Earth imagery list', message: error.message });
+  }
+});
+
+
+app.get('/earthnow/imageurl', async (req, res) => {
+  try {
+    const date = req.query.date || null;
+    const variant = req.query.variant || 'natural';
+    const response = await getEarthImageURL(date, variant);
     res.json(response);
   } catch (error) {
     console.error('Error serving Earth image:', error);
@@ -93,18 +105,32 @@ app.get('/earthnow/imageurl', async (req, res) => {
 });
 
 app.get('/earthnow/image', async (req, res) => {
-  const image = await getEarthImage(req.query.date || null, req.query.variant || 'natural');
-  res.send(image);
+  try {
+    const image = await getEarthImage(req.query.date || 'latest', req.query.variant || 'natural', req.query.index || 0);
+    res.set('Content-Type', 'image/png');
+    res.send(Buffer.from(image));
+  } catch (error) {
+    console.error('Error serving Earth image:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch Earth image', 
+      message: error.message 
+    });
+  }
 });
 
 app.get('/earthnow/metadata', async (req, res) => {
-  // Check cache first
-  const cacheKey = 'earthnow_metadata';
+  const date = req.query.date || 'latest';
+  const variant = req.query.variant || 'natural';
+
+  console.log(`Getting image for date ${date} and variant ${variant}`)
+
+  // Include date and variant in cache key for specificity
+  const cacheKey = `earthnow_metadata_${date}_${variant}`;
   let response = cache.get(cacheKey);
 
   if (!response) {
     // Fetch fresh data if not in cache
-    response = await getEarthImageryMetadata();
+    response = await getEarthImageryMetadata(date, variant);
     cache.set(cacheKey, response);
   }
 
@@ -152,4 +178,3 @@ app.post('/cache/refresh', (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
-
