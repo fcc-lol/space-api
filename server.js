@@ -1,7 +1,7 @@
 import express from 'express';
 import {fetchData} from './modules/spaceWeather.js';
 import {getEarthImageURL, getEarthImage, getEarthImageryMetadata} from './modules/earthNow.js';
-import {satellitesAbove} from './modules/sattellites.js';
+import {satellitesAbove} from './modules/satellites.js';
 import {convertDmsToDecimal} from './modules/coordinates.js';
 import {getNeoFeed} from './modules/nearEarthObjects.js';
 import cache from './modules/cache.js';
@@ -163,16 +163,29 @@ app.get('/neos', async (req, res) => {
 app.get('/satellites-above', async (req, res) => {
   try {
     // Default location: NYC
-    const defaultCoords = convertDmsToDecimal(`40°41'34.4"N 73°58'54.2"W`);
+    let coords = convertDmsToDecimal(`40°41'34.4"N 73°58'54.2"W`);
+    
+    if (req.query.dms) {
+      const dmsCoords = convertDmsToDecimal(req.query.dms);
+      coords.latitude = dmsCoords.latitude;
+      coords.longitude = dmsCoords.longitude;
+      console.log("Using dms");
+    } else if (req.query.lat && req.query.lon) {
+      coords.latitude = parseFloat(req.query.lat);
+      coords.longitude = parseFloat(req.query.lon);
+      console.log("Using lat and lon");
+    }
+    console.log(coords);
+
 
     // Get coordinates from query params, or use defaults
-    const latitude = parseFloat(req.query.lat) || defaultCoords.latitude;
-    const longitude = parseFloat(req.query.lon) || defaultCoords.longitude;
+    const latitude = coords.latitude;
+    const longitude = coords.longitude;
     const altitude = parseFloat(req.query.alt) || 0;
     const searchRadius = parseFloat(req.query.radius) || 15;
 
     // Create a dynamic cache key based on location to avoid serving wrong data
-    const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}`;
+    const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
     const SATELLITE_CACHE_DURATION = .5 * 60 * 1000; // 5 minutes in milliseconds
 
     let response = cache.get(cacheKey);

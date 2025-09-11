@@ -7,6 +7,7 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 - **Space Weather Data**: Solar flares, coronal mass ejections (CMEs), and solar energetic particles (SEPs)
 - **Earth Imagery**: Latest satellite images of Earth from NASA's EPIC API
 - **Near Earth Objects**: Asteroid and comet data from NASA's NEO API
+- **Satellite Tracking**: Find satellites passing above a specific location using the N2YO API.
 - **Smart Caching**: Built-in caching system to reduce API calls and improve response times
 - **Date Filtering**: Optional date range parameters for time-sensitive data
 - **Cache Management**: Endpoints to monitor and control cache behavior
@@ -15,7 +16,7 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 
 - **Node.js** with ES modules
 - **Express.js** web framework
-- **NASA APIs** for space data
+- **NASA & N2YO APIs** for space data
 - **Custom caching system** for performance optimization
 
 ## 📋 Prerequisites
@@ -39,6 +40,7 @@ npm install
 3. Create a `.env` file in the root directory:
 ```env
 NASA_API_KEY=your_nasa_api_key_here
+N2YO_API_KEY=your_n2yo_api_key_here
 ```
 
 4. Start the server:
