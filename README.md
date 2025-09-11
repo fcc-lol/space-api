@@ -23,6 +23,7 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 
 - Node.js (v14 or higher)
 - NASA API key ([Get one here](https://api.nasa.gov/))
+- N2YO API key ([Get one here](https://www.n2yo.com/api/))
 
 ## 🚀 Installation
 
@@ -142,6 +143,33 @@ Retrieves Near Earth Object (asteroid and comet) data for the past week.
 GET /neos
 ```
 
+### Satellite Tracking
+
+#### GET `/satellites-above`
+Retrieves satellites currently passing above a specific location using the N2YO API.
+
+**Query Parameters:**
+- `lat` (optional): Latitude in decimal degrees. Defaults to NYC (40.69°N)
+- `lon` (optional): Longitude in decimal degrees. Defaults to NYC (-73.98°W)
+- `dms` (optional): Coordinates in DMS format (e.g., `40°41'34.4"N 73°58'54.2"W`). Overrides lat/lon if provided
+- `alt` (optional): Observer altitude in kilometers. Defaults to 0
+- `radius` (optional): Search radius in degrees. Defaults to 15
+
+**Examples:**
+```bash
+# Get satellites above NYC (default location)
+GET /satellites-above
+
+# Get satellites above specific coordinates
+GET /satellites-above?lat=51.5074&lon=-0.1278&alt=0&radius=10
+
+# Get satellites above location using DMS format
+GET /satellites-above?dms=51°30'26.6"N 0°7'39.6"W
+
+# Get satellites above with custom altitude and radius
+GET /satellites-above?lat=40.7128&lon=-74.0060&alt=100&radius=20
+```
+
 ### Cache Management
 
 #### GET `/cache/status`
@@ -192,11 +220,12 @@ Content-Type: application/json
 
 ## 📊 Data Sources
 
-This API integrates with several NASA APIs:
+This API integrates with several space data APIs:
 
-- **DONKI API**: Solar flares, CMEs, and SEPs
-- **EPIC API**: Earth imagery
-- **NEO API**: Near Earth Objects
+- **NASA DONKI API**: Solar flares, CMEs, and SEPs
+- **NASA EPIC API**: Earth imagery
+- **NASA NEO API**: Near Earth Objects
+- **N2YO API**: Satellite tracking and orbital data
 
 ## 🗄️ Caching System
 
@@ -237,6 +266,15 @@ curl "http://localhost:3102/earthnow/image"
 # Get Earth imagery metadata
 curl "http://localhost:3102/earthnow/metadata"
 
+# Get satellites above NYC (default location)
+curl "http://localhost:3102/satellites-above"
+
+# Get satellites above specific coordinates
+curl "http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10"
+
+# Get satellites above location using DMS format
+curl "http://localhost:3102/satellites-above?dms=51°30'26.6\"N 0°7'39.6\"W"
+
 # Check cache status
 curl "http://localhost:3102/cache/status"
 ```
@@ -255,6 +293,10 @@ const neos = await neosResponse.json();
 // Get Earth imagery URL
 const earthUrlResponse = await fetch('http://localhost:3102/earthnow/imageurl');
 const earthImageUrl = await earthUrlResponse.json();
+
+// Get satellites above specific location
+const satellitesResponse = await fetch('http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10');
+const satellites = await satellitesResponse.json();
 ```
 
 ## 🤝 Contributing
@@ -272,6 +314,7 @@ This project is licensed under the ISC License.
 ## 🙏 Acknowledgments
 
 - [NASA APIs](https://api.nasa.gov/) for providing access to space data
+- [N2YO API](https://www.n2yo.com/api/) for satellite tracking data
 - Express.js community for the excellent web framework
 - Node.js community for the runtime environment
 
