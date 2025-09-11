@@ -1,6 +1,8 @@
 import express from 'express';
 import {fetchData} from './modules/spaceWeather.js';
 import {getEarthImageURL, getEarthImage, getEarthImageryMetadata} from './modules/earthNow.js';
+import {satellitesAbove} from './modules/sattellites.js';
+import {convertDmsToDecimal} from './modules/coordinates.js';
 import {getNeoFeed} from './modules/nearEarthObjects.js';
 import cache from './modules/cache.js';
 const app = express();
@@ -13,8 +15,13 @@ app.use(express.json());
 cache.registerRefreshFunction('solarflares', () => fetchData('solarFlares'));
 cache.registerRefreshFunction('sep', () => fetchData('SEP'));
 cache.registerRefreshFunction('cmes', () => fetchData('CMEs'));
-cache.registerRefreshFunction('earthnow', () => getEarthImagery());
 cache.registerRefreshFunction('neos', () => getNeoFeed());
+// Note: We are not registering a global refresh function for satellites
+// because its parameters (lat, lon) are request-specific.
+// The cache for this endpoint will be populated on-demand by user requests.
+setInterval(() => {
+    cache.refreshAll(); // This will refresh solarflares, sep, cmes, neos
+}, 15 * 60 * 1000); // Refresh every 15 minutes
 
 app.get('/', (req, res) => {
   res.send('space-api');
@@ -153,6 +160,43 @@ app.get('/neos', async (req, res) => {
   res.json(response);
 });
 
+app.get('/satellites-above', async (req, res) => {
+  try {
+    // Default location: NYC
+    const defaultCoords = convertDmsToDecimal(`40°41'34.4"N 73°58'54.2"W`);
+
+    // Get coordinates from query params, or use defaults
+    const latitude = parseFloat(req.query.lat) || defaultCoords.latitude;
+    const longitude = parseFloat(req.query.lon) || defaultCoords.longitude;
+    const altitude = parseFloat(req.query.alt) || 0;
+    const searchRadius = parseFloat(req.query.radius) || 15;
+
+    // Create a dynamic cache key based on location to avoid serving wrong data
+    const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}`;
+    const SATELLITE_CACHE_DURATION = .5 * 60 * 1000; // 5 minutes in milliseconds
+
+    let response = cache.get(cacheKey);
+    
+    if (!response) {
+      console.log(`Cache miss for ${cacheKey}, fetching fresh satellite data.`);
+      // Fetch fresh satellite data
+      response = await satellitesAbove(latitude, longitude, altitude, searchRadius);
+      // Cache the response with a 5-minute duration
+      cache.set(cacheKey, response, SATELLITE_CACHE_DURATION);
+    }
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching satellites:', error);
+    // Avoid caching errors
+    res.status(500).json({
+      error: 'Failed to fetch satellite data',
+      message: error.message
+    });
+  }
+});
+
+
 // Add a cache status endpoint for debugging
 app.get('/cache/status', (req, res) => {
   res.json(cache.getStatus());
@@ -162,18 +206,17 @@ app.get('/cache/status', (req, res) => {
 app.post('/cache/refresh', (req, res) => {
   const { key } = req.body;
   
-  if (key) {
-    // Clear specific cache entry
-    cache.cache.delete(key);
-    cache.timestamps.delete(key);
-    console.log(`Force refreshed cache for: ${key}`);
-    res.json({ message: `Cache refreshed for ${key}` });
-  } else {
-    // Clear all cache entries
-    cache.cache.clear();
-    cache.timestamps.clear();
+  try {
+    if (key) {
+      cache.refresh(key);
+      res.json({ message: `Cache refresh initiated for ${key}` });
+    } else {
+      cache.refreshAll();
+      res.json({ message: 'All cache entries are being refreshed' });
+    }
+  } catch (error) {
     console.log('Force refreshed all cache entries');
-    res.json({ message: 'All cache entries refreshed' });
+    res.status(400).json({ message: error.message });
   }
 });
 

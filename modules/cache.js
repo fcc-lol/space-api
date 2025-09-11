@@ -2,7 +2,7 @@ class Cache {
     constructor() {
         this.cache = new Map();
         this.timestamps = new Map();
-        this.cacheDuration = 60 * 60 * 1000; // 1 hour in milliseconds
+        this.defaultCacheDuration = 60 * 60 * 1000; // 1 hour in milliseconds
         this.refreshFunctions = new Map(); // Store refresh functions for each cache key
     }
 
@@ -11,12 +11,17 @@ class Cache {
         this.refreshFunctions.set(key, refreshFunc);
     }
 
+    _getCacheDuration(key) {
+        const timestampData = this.timestamps.get(key);
+        return (timestampData && timestampData.duration) ? timestampData.duration : this.defaultCacheDuration;
+    }
+
     // Get cached data if it exists and is not expired
     get(key) {
-        const timestamp = this.timestamps.get(key);
+        const timestampData = this.timestamps.get(key);
         const now = Date.now();
         
-        if (timestamp && (now - timestamp) < this.cacheDuration) {
+        if (timestampData && (now - timestampData.timestamp) < this._getCacheDuration(key)) {
             console.log(`Cache hit for ${key}`);
             return this.cache.get(key);
         }
@@ -25,20 +30,24 @@ class Cache {
         return null;
     }
 
-    // Set data in cache with current timestamp
-    set(key, data) {
+    // Set data in cache with current timestamp and optional custom duration
+    set(key, data, duration = null) {
         this.cache.set(key, data);
-        this.timestamps.set(key, Date.now());
+        this.timestamps.set(key, {
+            timestamp: Date.now(),
+            duration: duration || this.defaultCacheDuration
+        });
         console.log(`Cached data for ${key}`);
     }
 
     // Check if cache entry exists and is valid
     has(key) {
-        const timestamp = this.timestamps.get(key);
-        if (!timestamp) return false;
+        const timestampData = this.timestamps.get(key);
+        if (!timestampData) return false;
         
         const now = Date.now();
-        return (now - timestamp) < this.cacheDuration;
+        const duration = this._getCacheDuration(key);
+        return (now - timestampData.timestamp) < duration;
     }
 
     // Get cache status for debugging
@@ -46,13 +55,14 @@ class Cache {
         const status = {};
         const now = Date.now();
         
-        for (const [key, timestamp] of this.timestamps) {
-            const age = now - timestamp;
-            const isValid = age < this.cacheDuration;
+        for (const [key, timestampData] of this.timestamps) {
+            const duration = this._getCacheDuration(key);
+            const age = now - timestampData.timestamp;
+            const isValid = age < duration;
             status[key] = {
                 age: Math.round(age / 1000), // age in seconds
-                isValid,
-                timeUntilExpiry: isValid ? Math.round((this.cacheDuration - age) / 1000) : 0
+                isValid,                
+                timeUntilExpiry: isValid ? Math.round((duration - age) / 1000) : 0
             };
         }
         
@@ -62,8 +72,9 @@ class Cache {
     // Clear expired entries
     cleanup() {
         const now = Date.now();
-        for (const [key, timestamp] of this.timestamps) {
-            if ((now - timestamp) >= this.cacheDuration) {
+        for (const [key, timestampData] of this.timestamps) {
+            const duration = this._getCacheDuration(key);
+            if ((now - timestampData.timestamp) >= duration) {
                 this.cache.delete(key);
                 this.timestamps.delete(key);
                 console.log(`Cleaned up expired cache entry: ${key}`);
@@ -111,7 +122,7 @@ class Cache {
 
 // Create a singleton instance
 const cache = new Cache();
-cache.refreshAll();
+// cache.refreshAll(); // It's better to let the first request populate the cache.
 
 // Clean up expired entries every 30 minutes
 setInterval(() => {
@@ -119,10 +130,10 @@ setInterval(() => {
     cache.cleanup();
 }, 30 * 60 * 1000);
 
-// Scheduled refresh every hour
-setInterval(() => {
-    console.log("Refreshing all cache");
-    cache.refreshAll();
-}, 60 * 60 * 1000);
+// Scheduled refresh every 15 minutes (except for satellites)
+// setInterval(() => {
+//     console.log("Refreshing all cache");
+//     cache.refreshAll();
+// }, 15 * 60 * 1000);
 
 export default cache;
