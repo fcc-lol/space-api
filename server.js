@@ -181,8 +181,8 @@ app.get('/satellites-above', async (req, res) => {
     // Get coordinates from query params, or use defaults
     const latitude = coords.latitude;
     const longitude = coords.longitude;
-    const altitude = parseFloat(req.query.alt) || 0;
-    const searchRadius = parseFloat(req.query.radius) || 15;
+    const altitude = req.query.alt || 0;
+    const searchRadius = req.query.radius || 5;
 
     // Create a dynamic cache key based on location to avoid serving wrong data
     const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
@@ -195,7 +195,9 @@ app.get('/satellites-above', async (req, res) => {
       // Fetch fresh satellite data
       response = await satellitesAbove(latitude, longitude, altitude, searchRadius);
       // Cache the response with a 5-minute duration
-      cache.set(cacheKey, response, SATELLITE_CACHE_DURATION);
+      if (!response.error) {
+        cache.set(cacheKey, response, SATELLITE_CACHE_DURATION);
+      }
     }
     
     res.json(response);
