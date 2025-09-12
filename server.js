@@ -5,8 +5,10 @@ import {satellitesAbove} from './modules/satellites.js';
 import {convertDmsToDecimal} from './modules/coordinates.js';
 import {getNeoFeed} from './modules/nearEarthObjects.js';
 import cache from './modules/cache.js';
+import setupLog from './setup-log.json' with { type: 'json' };
+
 const app = express();
-const port = 3102;
+const port = setupLog.port || 3102;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
