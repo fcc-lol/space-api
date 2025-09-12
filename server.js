@@ -8,7 +8,7 @@ import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
 
 const app = express();
-const port = setupLog.port || 3102;
+const port = process.env.PORT || 3102;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
