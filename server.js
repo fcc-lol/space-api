@@ -186,7 +186,7 @@ app.get('/satellites-above', async (req, res) => {
 
     // Create a dynamic cache key based on location to avoid serving wrong data
     const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
-    const SATELLITE_CACHE_DURATION = .5 * 60 * 1000; // 5 minutes in milliseconds
+    const SATELLITE_CACHE_DURATION = .5 * 60 * 1000; // 30 seconds in milliseconds
 
     let response = cache.get(cacheKey);
     
@@ -211,6 +211,56 @@ app.get('/satellites-above', async (req, res) => {
   }
 });
 
+app.get('/satellites-above-map', async (req, res) => {
+  try {
+    // Default location: NYC
+    let coords = convertDmsToDecimal(`40°41'34.4"N 73°58'54.2"W`);
+    
+    if (req.query.dms) {
+      const dmsCoords = convertDmsToDecimal(req.query.dms);
+      coords.latitude = dmsCoords.latitude;
+      coords.longitude = dmsCoords.longitude;
+    } else if (req.query.lat && req.query.lon) {
+      coords.latitude = parseFloat(req.query.lat);
+      coords.longitude = parseFloat(req.query.lon);
+    }
+
+    const latitude = coords.latitude;
+    const longitude = coords.longitude;
+    const altitude = req.query.alt || 0;
+    const searchRadius = req.query.radius || 5;
+
+    // Use the same caching logic as /satellites-above
+    const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
+    const SATELLITE_CACHE_DURATION = 0.5 * 60 * 1000; // 30 seconds
+
+    let satelliteData = cache.get(cacheKey);
+    
+    if (!satelliteData) {
+      satelliteData = await satellitesAbove(latitude, longitude, altitude, searchRadius);
+      if (!satelliteData.error) {
+        cache.set(cacheKey, satelliteData, SATELLITE_CACHE_DURATION);
+      }
+    }
+
+    if (satelliteData.error || !satelliteData.above || satelliteData.above.length === 0) {
+      return res.status(404).json({ message: 'No satellites found for the given location.', data: satelliteData });
+    }
+
+    // Construct the Google Maps URL to show pins, not directions.
+    // The map will be centered on the observer's location.
+    // The satellite locations will be part of the search query.
+    const observerLocation = `${latitude},${longitude}`;
+    const satellitePinsQuery = satelliteData.above.map(sat => `${sat.satlat},${sat.satlng}`).join('/');
+    const mapUrl = `https://www.google.com/maps/search/${satellitePinsQuery}/@${observerLocation},8z`;
+
+    res.json({ mapUrl });
+
+  } catch (error) {
+    console.error('Error generating satellite map URL:', error);
+    res.status(500).json({ error: 'Failed to generate satellite map URL', message: error.message });
+  }
+});
 
 // Add a cache status endpoint for debugging
 app.get('/cache/status', (req, res) => {
