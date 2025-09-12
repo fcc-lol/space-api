@@ -5,9 +5,10 @@ dotenv.config();
 
 const API_URL = `https://api.n2yo.com/rest/v1/satellite/`
 
-export const satellitesAbove = async (observer_lat, observer_lng, observer_alt, search_radius) => {
+export const satellitesAbove = async (lat, lon, alt, radius) => {
     console.log("satellitesAbove");
-    const url = `${API_URL}above/${observer_lat}/${observer_lng}/${observer_alt}/${search_radius}/0&apiKey=${process.env.N2YO_API_KEY}`;
+    const url = `${API_URL}above/${lat}/${lon}/${alt}/${radius}/0/&apiKey=${process.env.N2YO_API_KEY}`;
+    console.log(url);
     try {
         const response = await fetch(url);
         const data = await response.json();
