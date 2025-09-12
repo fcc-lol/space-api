@@ -186,7 +186,7 @@ app.get('/satellites-above', async (req, res) => {
 
     // Create a dynamic cache key based on location to avoid serving wrong data
     const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
-    const SATELLITE_CACHE_DURATION = .5 * 60 * 1000; // 30 seconds in milliseconds
+    const SATELLITE_CACHE_DURATION = 5 * 60 * 1000; // 30 seconds in milliseconds
 
     let response = cache.get(cacheKey);
     
