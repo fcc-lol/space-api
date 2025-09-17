@@ -6,12 +6,16 @@ import {convertDmsToDecimal} from './modules/coordinates.js';
 import {getNeoFeed} from './modules/nearEarthObjects.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
+import cors from 'cors';
 
 const app = express();
 const port = process.env.PORT || 3102;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
+
+// Enable CORS for all routes and origins
+app.use(cors());
 
 // Register refresh functions with the cache
 cache.registerRefreshFunction('solarflares', () => fetchData('solarFlares'));
