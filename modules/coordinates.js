@@ -29,9 +29,33 @@ const dmsToDecimal = (dmsString) => {
  * @returns {{latitude: number, longitude: number}} An object with decimal latitude and longitude.
  */
 export const convertDmsToDecimal = (dmsString) => {
-    const [latDms, lonDms] = dmsString.trim().split(/\s+/);
-    return {
-        latitude: dmsToDecimal(latDms),
-        longitude: dmsToDecimal(lonDms),
-    };
+    if (isValidDms(dmsString)){
+        return {
+            latitude: dmsToDecimal(dmsString.split(' ')[0]),
+            longitude: dmsToDecimal(dmsString.split(' ')[1]),
+        };
+    }
+    // If the string is not valid, throw an error
+    throw new Error(`Invalid DMS string format: ${dmsString}`);
+};
+/**
+ * Validates if a given string is in a valid DMS (Degrees, Minutes, Seconds) format.
+ * Expected format: `40°41'34.4"N 73°58'54.2"W`
+ * @param {string} dmsString - The string to validate.
+ * @returns {boolean} True if the string is a valid DMS format, false otherwise.
+ */
+export const isValidDms = (dmsString) => {
+    // Regex to match a single DMS coordinate (e.g., 40°41'34.4"N)
+    const singleDmsRegex = /\d+°\d+'\d+(\.\d+)?"[NSEW]/;
+    
+    // Split the string into two potential DMS parts (latitude and longitude)
+    const parts = dmsString.trim().split(/\s+/);
+
+    // A valid DMS string for lat/lon should have exactly two parts
+    if (parts.length !== 2) {
+        return false;
+    }
+
+    // Check if both parts match the single DMS regex
+    return singleDmsRegex.test(parts[0]) && singleDmsRegex.test(parts[1]);
 };

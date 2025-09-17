@@ -184,7 +184,7 @@ app.get('/satellites-above', async (req, res) => {
     const latitude = coords.latitude;
     const longitude = coords.longitude;
     const altitude = req.query.alt || 0;
-    const searchRadius = req.query.radius || 5;
+    const searchRadius = req.query.radius || 7;
 
     // Create a dynamic cache key based on location to avoid serving wrong data
     const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
@@ -199,6 +199,14 @@ app.get('/satellites-above', async (req, res) => {
       // Cache the response with a 5-minute duration
       if (!response.error) {
         cache.set(cacheKey, response, SATELLITE_CACHE_DURATION);
+        response.info = {
+          ...response.info,
+          latitude, longitude, altitude, searchRadius
+        }
+      } else { // If there was an error, still include the request info
+        response.info = {
+          latitude, longitude, altitude, searchRadius
+        };
       }
     }
     
@@ -212,6 +220,15 @@ app.get('/satellites-above', async (req, res) => {
     });
   }
 });
+
+app.get('/dmstodecimals', (req, res) => {
+  const dmsString = req.query.dms;
+  if (!dmsString) {
+    return res.status(400).json({ error: 'Missing dms query parameter' });
+  }
+  const decimalCoords = convertDmsToDecimal(dmsString);
+  res.json(decimalCoords);
+})
 
 // Add a cache status endpoint for debugging
 app.get('/cache/status', (req, res) => {
