@@ -204,7 +204,7 @@ app.get('/satellites-above', async (req, res) => {
       // Cache the response with a 5-minute duration
       if (!response.error) {
         cache.set(cacheKey, response, cache_duration);
-        console.log(`N2YO API Usage for /above is ${response.info.transactioncount} / 100 calls per hour`);
+        console.log(`N2YO API Usage for /above is ${response.info.transactionscount} / 100 calls per hour`);
         response.info = {
           ...response.info,
           latitude, longitude, altitude, searchRadius
@@ -247,7 +247,7 @@ app.get("/satellite-positions", async (req, res) => {
       // Cache the response with a 5-minute duration
       if (!response.error) {
         cache.set(cacheKey, response, cache_duration);
-        console.log(`N2YO API Usage for /positions is ${response.info.transactioncount} / 1000 calls per hour`);
+        console.log(`N2YO API Usage for /positions is ${response.info.transactionscount} / 1000 calls per hour`);
       } else { // If there was an error, still include the request info
         response.info = {
           latitude, longitude, altitude, searchRadius
