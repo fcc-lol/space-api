@@ -120,15 +120,14 @@ app.get('/earthnow/imageurl', async (req, res) => {
 
 app.get('/earthnow/image', async (req, res) => {
   try {
-    const image = await getEarthImage(req.query.date || 'latest', req.query.variant || 'natural', req.query.index || 0);
-    res.set('Content-Type', 'image/png');
-    res.send(Buffer.from(image));
+    const date = req.query.date || 'latest';
+    const variant = req.query.variant || 'natural';
+    const index = req.query.index || 0;
+    const imageUrl = await getEarthImageURL(date, variant, index);
+    res.redirect(imageUrl);
   } catch (error) {
-    console.error('Error serving Earth image:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch Earth image', 
-      message: error.message 
-    });
+    console.error('Error getting Earth image URL:', error);
+    res.status(500).json({ error: 'Failed to get Earth image URL', message: error.message });
   }
 });
 
@@ -192,7 +191,7 @@ app.get('/satellites-above', async (req, res) => {
 
     // Create a dynamic cache key based on location to avoid serving wrong data
     const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
-    const SATELLITE_CACHE_DURATION = .5 * 60 * 1000;
+    const SATELLITE_CACHE_DURATION = 10 * 1000;
 
     let response = cache.get(cacheKey);
     
