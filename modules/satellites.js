@@ -18,3 +18,15 @@ export const satellitesAbove = async (lat, lon, alt, radius) => {
         throw error;
     }
 }
+
+export const satellitePositions = async (lat, lon, satId) => {
+    const url = `${API_URL}positions/${satId}/${lat}/${lon}/0/36/&apiKey=${process.env.N2YO_API_KEY}`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error fetching satellite positions:", error);
+        throw error;
+    }
+}

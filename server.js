@@ -1,7 +1,7 @@
 import express from 'express';
 import {fetchData} from './modules/spaceWeather.js';
 import {getEarthImageURL, getEarthImage, getEarthImageryMetadata} from './modules/earthNow.js';
-import {satellitesAbove} from './modules/satellites.js';
+import {satellitesAbove, satellitePositions} from './modules/satellites.js';
 import {convertDmsToDecimal} from './modules/coordinates.js';
 import {getNeoFeed} from './modules/nearEarthObjects.js';
 import cache from './modules/cache.js';
@@ -191,7 +191,7 @@ app.get('/satellites-above', async (req, res) => {
 
     // Create a dynamic cache key based on location to avoid serving wrong data
     const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
-    const SATELLITE_CACHE_DURATION = 3600 * 1000 / 100; // 1 hour / 100 calls = 36 seconds per call
+    const cache_duration = 3600 * 1000 / 100; // 1 hour / 100 calls = 36 seconds per call
 
     let response = cache.get(cacheKey);
     
@@ -201,7 +201,7 @@ app.get('/satellites-above', async (req, res) => {
       response = await satellitesAbove(latitude, longitude, altitude, searchRadius);
       // Cache the response with a 5-minute duration
       if (!response.error) {
-        cache.set(cacheKey, response, SATELLITE_CACHE_DURATION);
+        cache.set(cacheKey, response, cache_duration);
         response.info = {
           ...response.info,
           latitude, longitude, altitude, searchRadius
@@ -221,6 +221,40 @@ app.get('/satellites-above', async (req, res) => {
       error: 'Failed to fetch satellite data',
       message: error.message
     });
+  }
+});
+
+app.get("/satellite-positions", async (req, res) => {
+  try {
+    let coords = convertDmsToDecimal(`40°41'34.4"N 73°58'54.2"W`);
+    const latitude = coords.latitude;
+    const longitude = coords.longitude;
+
+    const satId = req.query.satid;
+    const cacheKey = `satellite_positions_${satId}`;
+    let response = cache.get(cacheKey);
+    const cache_duration = 36 * 1000; // 5 minutes
+
+
+    if (!response) {
+      console.log(`Cache miss for ${cacheKey}, fetching fresh satellite data.`)
+      // Fetch fresh satellite data
+      response = await satellitePositions(latitude, longitude, satId);
+      // Cache the response with a 5-minute duration
+      if (!response.error) {
+        cache.set(cacheKey, response, cache_duration);
+      } else { // If there was an error, still include the request info
+        response.info = {
+          latitude, longitude, altitude, searchRadius
+        };
+      }
+    }
+
+    res.json(response);
+
+  } catch (error) {
+    console.error('Error in /satellite-positions:', error);
+    res.status(500).json({ error: 'Failed to get satellite positions', message: error.message });
   }
 });
 
