@@ -166,6 +166,7 @@ app.get('/neos', async (req, res) => {
 });
 
 app.get('/satellites-above', async (req, res) => {
+  console.log("Getting satellites above");
   try {
     // Default location: NYC
     let coords = convertDmsToDecimal(`40°41'34.4"N 73°58'54.2"W`);
@@ -227,6 +228,7 @@ app.get('/satellites-above', async (req, res) => {
 });
 
 app.get("/satellite-positions", async (req, res) => {
+  console.log("Getting satellite positions");
   try {
     let coords = convertDmsToDecimal(`40°41'34.4"N 73°58'54.2"W`);
     const latitude = coords.latitude;
