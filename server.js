@@ -11,6 +11,9 @@ import cors from 'cors';
 const app = express();
 const port = process.env.PORT || 3102;
 
+// How often (in seconds) to fetch fresh satellite data to avoid N2YO rate limits.
+const SATELLITE_DATA_FETCH_INTERVAL_SECONDS = 60;
+
 // Middleware to parse JSON bodies
 app.use(express.json());
 
@@ -192,7 +195,6 @@ app.get('/satellites-above', async (req, res) => {
 
     // Create a dynamic cache key based on location to avoid serving wrong data
     const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
-    const cache_duration = 4000 * 1000 / 100; // 1 hour / 100 calls = 36 seconds per call, so setting to 40 seconds
 
     let response = cache.get(cacheKey);
     
@@ -201,9 +203,8 @@ app.get('/satellites-above', async (req, res) => {
       // Fetch fresh satellite data
       response = await satellitesAbove(latitude, longitude, altitude, searchRadius);
 
-      // Cache the response with a 5-minute duration
       if (!response.error) {
-        cache.set(cacheKey, response, cache_duration);
+        cache.set(cacheKey, response, SATELLITE_DATA_FETCH_INTERVAL_SECONDS * 1000);
         console.error(`N2YO API Usage for /above is ${response.info.transactionscount} / 100 calls per hour`);
         response.info = {
           ...response.info,
@@ -236,17 +237,15 @@ app.get("/satellite-positions", async (req, res) => {
 
     const satId = req.query.satid;
     const cacheKey = `satellite_positions_${satId}`;
+    const cacheDuration = 20 * 1000;
     let response = cache.get(cacheKey);
-    const cache_duration = 36 * 1000;
-
 
     if (!response) {
       console.warn(`Cache miss for ${cacheKey}, fetching fresh satellite data.`)
       // Fetch fresh satellite data
-      response = await satellitePositions(latitude, longitude, satId);
-      // Cache the response with a 5-minute duration
+      response = await satellitePositions(latitude, longitude, satId, SATELLITE_DATA_FETCH_INTERVAL_SECONDS);
       if (!response.error) {
-        cache.set(cacheKey, response, cache_duration);
+        cache.set(cacheKey, response, cacheDuration);
         console.error(`N2YO API Usage for /positions is ${response.info.transactionscount} / 1000 calls per hour`);
       } else { // If there was an error, still include the request info
         response.info = {

@@ -19,8 +19,8 @@ export const satellitesAbove = async (lat, lon, alt, radius) => {
     }
 }
 
-export const satellitePositions = async (lat, lon, satId) => {
-    const url = `${API_URL}positions/${satId}/${lat}/${lon}/0/40/&apiKey=${process.env.N2YO_API_KEY}`;
+export const satellitePositions = async (lat, lon, satId, seconds = 40) => {
+    const url = `${API_URL}positions/${satId}/${lat}/${lon}/0/${seconds}/&apiKey=${process.env.N2YO_API_KEY}`;
     try {
         const response = await fetch(url);
         const data = await response.json();
