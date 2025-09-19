@@ -199,9 +199,11 @@ app.get('/satellites-above', async (req, res) => {
       console.log(`Cache miss for ${cacheKey}, fetching fresh satellite data.`);
       // Fetch fresh satellite data
       response = await satellitesAbove(latitude, longitude, altitude, searchRadius);
+
       // Cache the response with a 5-minute duration
       if (!response.error) {
         cache.set(cacheKey, response, cache_duration);
+        console.log(`N2YO API Usage for /above is ${response.info.usage} / 100 calls per hour`);
         response.info = {
           ...response.info,
           latitude, longitude, altitude, searchRadius
@@ -233,7 +235,7 @@ app.get("/satellite-positions", async (req, res) => {
     const satId = req.query.satid;
     const cacheKey = `satellite_positions_${satId}`;
     let response = cache.get(cacheKey);
-    const cache_duration = 36 * 1000; // 5 minutes
+    const cache_duration = 36 * 1000;
 
 
     if (!response) {
@@ -243,6 +245,7 @@ app.get("/satellite-positions", async (req, res) => {
       // Cache the response with a 5-minute duration
       if (!response.error) {
         cache.set(cacheKey, response, cache_duration);
+        console.log(`N2YO API Usage for /positions is ${response.info.usage} / 1000 calls per hour`);
       } else { // If there was an error, still include the request info
         response.info = {
           latitude, longitude, altitude, searchRadius
