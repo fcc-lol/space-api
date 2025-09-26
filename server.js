@@ -4,6 +4,7 @@ import {getEarthImageURL, getEarthImage, getEarthImageryMetadata} from './module
 import {satellitesAbove, satellitePositions} from './modules/satellites.js';
 import {convertDmsToDecimal} from './modules/coordinates.js';
 import {getNeoFeed} from './modules/nearEarthObjects.js';
+import {getUpcomingLaunches} from './modules/launches.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
 import cors from 'cors';
@@ -25,6 +26,7 @@ cache.registerRefreshFunction('solarflares', () => fetchData('solarFlares'));
 cache.registerRefreshFunction('sep', () => fetchData('SEP'));
 cache.registerRefreshFunction('cmes', () => fetchData('CMEs'));
 cache.registerRefreshFunction('neos', () => getNeoFeed());
+cache.registerRefreshFunction('launches', () => getUpcomingLaunches());
 // Note: We are not registering a global refresh function for satellites
 // because its parameters (lat, lon) are request-specific.
 // The cache for this endpoint will be populated on-demand by user requests.
@@ -260,6 +262,22 @@ app.get("/satellite-positions", async (req, res) => {
     console.error('Error in /satellite-positions:', error);
     res.status(500).json({ error: 'Failed to get satellite positions', message: error.message });
   }
+});
+
+app.get('/launches', async (req, res) => {
+  console.log("Getting upcoming launches");
+  
+  // Check cache first
+  const cacheKey = 'launches';
+  let response = cache.get(cacheKey);
+  
+  if (!response) {
+    // Fetch fresh data if not in cache
+    response = await getUpcomingLaunches();
+    cache.set(cacheKey, response, 3600 * 1000); // Cache for one hour
+  }
+  
+  res.json(response);
 });
 
 app.get('/dmstodecimals', (req, res) => {

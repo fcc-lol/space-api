@@ -7,6 +7,7 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 - **Space Weather Data**: Solar flares, coronal mass ejections (CMEs), and solar energetic particles (SEPs)
 - **Earth Imagery**: Latest satellite images of Earth from NASA's EPIC API
 - **Near Earth Objects**: Asteroid and comet data from NASA's NEO API
+- **Upcoming Space Launches**: Data on upcoming rocket launches from The Space Devs API
 - **Satellite Tracking**: Find satellites passing above a specific location using the N2YO API.
 - **Smart Caching**: Built-in caching system to reduce API calls and improve response times
 - **Date Filtering**: Optional date range parameters for time-sensitive data
@@ -16,7 +17,7 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 
 - **Node.js** with ES modules
 - **Express.js** web framework
-- **NASA & N2YO APIs** for space data
+- **NASA, N2YO, & The Space Devs APIs** for space data
 - **Custom caching system** for performance optimization
 
 ## 📋 Prerequisites
@@ -141,6 +142,18 @@ Retrieves Near Earth Object (asteroid and comet) data for the past week.
 **Example:**
 ```bash
 GET /neos
+```
+
+### Upcoming Space Launches
+
+#### GET `/launches`
+Retrieves upcoming space launch data from The Space Devs API.
+
+**No parameters required.**
+
+**Example:**
+```bash
+GET /launches
 ```
 
 ### Satellite Tracking
@@ -273,7 +286,7 @@ curl "http://localhost:3102/satellites-above"
 curl "http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10"
 
 # Get satellites above location using DMS format
-curl "http://localhost:3102/satellites-above?dms=51°30'26.6\"N 0°7'39.6\"W"
+curl "http://localhost:3102/satellites-above?dms=51°30'26.6"N 0°7'39.6"W"
 
 # Check cache status
 curl "http://localhost:3102/cache/status"

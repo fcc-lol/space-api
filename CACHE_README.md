@@ -22,6 +22,7 @@ The following endpoints are cached with their respective keys:
 - `/cmes` → `cmes`
 - `/earthnow` → `earthnow`
 - `/neos` → `neos`
+- `/launches` → `launches`
 
 ## API Endpoints
 
@@ -32,6 +33,7 @@ All existing endpoints now use caching:
 - `GET /cmes` - Coronal mass ejection data
 - `GET /earthnow` - Earth imagery data
 - `GET /neos` - Near Earth Objects data
+- `GET /launches` - Upcoming space launch data
 
 ### Cache Management Endpoints
 - `GET /cache/status` - View cache status and statistics
