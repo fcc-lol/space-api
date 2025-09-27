@@ -239,7 +239,7 @@ app.get("/satellite-positions", async (req, res) => {
 
     const satId = req.query.satid;
     const cacheKey = `satellite_positions_${satId}`;
-    const cacheDuration = 20 * 1000;
+    const cacheDuration = 60 * 1000;
     let response = cache.get(cacheKey);
 
     if (!response) {
