@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import {convertDateFormat, getDates} from './dates.js';
+import cache from './cache.js';
 
 dotenv.config();
 
@@ -120,4 +121,29 @@ export const getEarthImage = async (date = 'latest', variant = 'natural', index 
     const imageResponse = await fetch(imageUrl);
     const imageBuffer = await imageResponse.arrayBuffer();
     return imageBuffer;
+};
+
+// Cached wrapper functions
+export const getEarthImageryMetadataCached = async (date = 'latest', variant = 'natural', index = 0) => {
+    const cacheKey = `earthnow_metadata_${date}_${variant}`;
+    let response = cache.get(cacheKey);
+    
+    if (!response) {
+        response = await getEarthImageryMetadata(date, variant, index);
+        cache.set(cacheKey, response);
+    }
+    
+    return response;
+};
+
+export const getEarthImageryListCached = async (date = 'latest', variant = 'natural') => {
+    const cacheKey = `earthnow_list_${date}_${variant}`;
+    let response = cache.get(cacheKey);
+    
+    if (!response) {
+        response = await getEarthImageryMetadata(date, variant);
+        cache.set(cacheKey, response);
+    }
+    
+    return response;
 };

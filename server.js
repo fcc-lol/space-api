@@ -1,10 +1,10 @@
 import express from 'express';
-import {fetchData} from './modules/spaceWeather.js';
-import {getEarthImageURL, getEarthImage, getEarthImageryMetadata} from './modules/earthNow.js';
-import {satellitesAbove, satellitePositions} from './modules/satellites.js';
+import {fetchDataCached} from './modules/spaceWeather.js';
+import {getEarthImageURL, getEarthImage, getEarthImageryMetadataCached, getEarthImageryListCached} from './modules/earthNow.js';
+import {satellitesAboveCached, satellitePositionsCached} from './modules/satellites.js';
 import {convertDmsToDecimal} from './modules/coordinates.js';
-import {getNeoFeed} from './modules/nearEarthObjects.js';
-import {getUpcomingLaunches, getUpcomingEvents, getLauncherConfigurations} from './modules/spaceFlight.js';
+import {getNeoFeedCached} from './modules/nearEarthObjects.js';
+import {getUpcomingLaunchesCached, getUpcomingEventsCached, getLauncherConfigurationsCached} from './modules/spaceFlight.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
 import cors from 'cors';
@@ -22,13 +22,13 @@ app.use(express.json());
 app.use(cors());
 
 // Register refresh functions with the cache
-cache.registerRefreshFunction('solarflares', () => fetchData('solarFlares'));
-cache.registerRefreshFunction('sep', () => fetchData('SEP'));
-cache.registerRefreshFunction('cmes', () => fetchData('CMEs'));
-cache.registerRefreshFunction('neos', () => getNeoFeed());
-cache.registerRefreshFunction('launches', () => getUpcomingLaunches());
-cache.registerRefreshFunction('events', () => getUpcomingEvents());
-cache.registerRefreshFunction('launchVehicles', () => getLauncherConfigurations());
+cache.registerRefreshFunction('solarflares', () => fetchDataCached('solarFlares'));
+cache.registerRefreshFunction('sep', () => fetchDataCached('SEP'));
+cache.registerRefreshFunction('cmes', () => fetchDataCached('CMEs'));
+cache.registerRefreshFunction('neos', () => getNeoFeedCached());
+cache.registerRefreshFunction('launches', () => getUpcomingLaunchesCached());
+cache.registerRefreshFunction('events', () => getUpcomingEventsCached());
+cache.registerRefreshFunction('launchVehicles', () => getLauncherConfigurationsCached());
 // Note: We are not registering a global refresh function for satellites
 // because its parameters (lat, lon) are request-specific.
 // The cache for this endpoint will be populated on-demand by user requests.
@@ -43,48 +43,21 @@ app.get('/', (req, res) => {
 app.get('/solarflares', async (req, res) => {
   console.log("Getting solar flares");
   
-  // Check cache first
-  const cacheKey = 'solarflares';
-  let response = cache.get(cacheKey);
-  
-  if (!response) {
-    // Fetch fresh data if not in cache
-    response = await fetchData('solarFlares', req.query.startDate || null, req.query.endDate || null);
-    cache.set(cacheKey, response);
-  }
-  
+  const response = await fetchDataCached('solarFlares', req.query.startDate || null, req.query.endDate || null);
   res.json(response);
 })
 
 app.get('/sep', async (req, res) => {
   console.log("Getting SEPs")
   
-  // Check cache first
-  const cacheKey = 'sep';
-  let response = cache.get(cacheKey);
-  
-  if (!response) {
-    // Fetch fresh data if not in cache
-    response = await fetchData('SEP', req.query.startDate || null, req.query.endDate || null);
-    cache.set(cacheKey, response);
-  }
-  
+  const response = await fetchDataCached('SEP', req.query.startDate || null, req.query.endDate || null);
   res.json(response);
 });
 
 app.get('/cmes', async (req, res) => {
   console.log("Getting coronal mass ejections")
   
-  // Check cache first
-  const cacheKey = 'cmes';
-  let response = cache.get(cacheKey);
-  
-  if (!response) {
-    // Fetch fresh data if not in cache
-    response = await fetchData('CMEs', req.query.startDate || null, req.query.endDate || null);
-    cache.set(cacheKey, response);
-  }
-  
+  const response = await fetchDataCached('CMEs', req.query.startDate || null, req.query.endDate || null);
   res.json(response);
 });
 
@@ -93,14 +66,7 @@ app.get('/earthnow/list', async (req, res) => {
     const date = req.query.date || 'latest';
     const variant = req.query.variant || 'natural';
 
-    const cacheKey = `earthnow_list_${date}_${variant}`;
-    let response = cache.get(cacheKey);
-
-    if (!response) {
-      response = await getEarthImageryMetadata(date, variant);
-      cache.set(cacheKey, response);
-    }
-
+    const response = await getEarthImageryListCached(date, variant);
     res.json(response);
   } catch (error) {
     console.error('Error fetching Earth imagery list:', error);
@@ -145,30 +111,12 @@ app.get('/earthnow/metadata', async (req, res) => {
 
   console.log(`Getting image for date ${date} and variant ${variant}`)
 
-  // Include date and variant in cache key for specificity
-  const cacheKey = `earthnow_metadata_${date}_${variant}`;
-  let response = cache.get(cacheKey);
-
-  if (!response) {
-    // Fetch fresh data if not in cache
-    response = await getEarthImageryMetadata(date, variant, index);
-    cache.set(cacheKey, response);
-  }
-
+  const response = await getEarthImageryMetadataCached(date, variant, index);
   res.json(response);
 });
 
 app.get('/neos', async (req, res) => {
-  // Check cache first
-  const cacheKey = 'neos';
-  let response = cache.get(cacheKey);
-  
-  if (!response) {
-    // Fetch fresh data if not in cache
-    response = await getNeoFeed();
-    cache.set(cacheKey, response);
-  }
-  
+  const response = await getNeoFeedCached();
   res.json(response);
 });
 
@@ -197,29 +145,8 @@ app.get('/satellites-above', async (req, res) => {
     const altitude = req.query.alt || 0;
     const searchRadius = req.query.radius || 7;
 
-    // Create a dynamic cache key based on location to avoid serving wrong data
-    const cacheKey = `satellites_${latitude.toFixed(2)}_${longitude.toFixed(2)}_${searchRadius}`;
-
-    let response = cache.get(cacheKey);
-    
-    if (!response) {
-      console.warn(`Cache miss for ${cacheKey}, fetching fresh satellite data.`);
-      // Fetch fresh satellite data
-      response = await satellitesAbove(latitude, longitude, altitude, searchRadius);
-
-      if (!response.error) {
-        cache.set(cacheKey, response, SATELLITE_DATA_FETCH_INTERVAL_SECONDS * 1000);
-        console.error(`N2YO API Usage for /above is ${response.info.transactionscount} / 100 calls per hour`);
-        response.info = {
-          ...response.info,
-          latitude, longitude, altitude, searchRadius
-        }
-      } else { // If there was an error, still include the request info
-        response.info = {
-          latitude, longitude, altitude, searchRadius
-        };
-      }
-    }
+    // Fetch satellite data with caching handled in the module
+    const response = await satellitesAboveCached(latitude, longitude, altitude, searchRadius);
     
     res.json(response);
   } catch (error) {
@@ -240,23 +167,9 @@ app.get("/satellite-positions", async (req, res) => {
     const longitude = coords.longitude;
 
     const satId = req.query.satid;
-    const cacheKey = `satellite_positions_${satId}`;
-    const cacheDuration = 60 * 1000;
-    let response = cache.get(cacheKey);
-
-    if (!response) {
-      console.warn(`Cache miss for ${cacheKey}, fetching fresh satellite data.`)
-      // Fetch fresh satellite data
-      response = await satellitePositions(latitude, longitude, satId, SATELLITE_DATA_FETCH_INTERVAL_SECONDS);
-      if (!response.error) {
-        cache.set(cacheKey, response, cacheDuration);
-        console.error(`N2YO API Usage for /positions is ${response.info.transactionscount} / 1000 calls per hour`);
-      } else { // If there was an error, still include the request info
-        response.info = {
-          latitude, longitude, altitude, searchRadius
-        };
-      }
-    }
+    
+    // Fetch satellite positions with caching handled in the module
+    const response = await satellitePositionsCached(latitude, longitude, satId, SATELLITE_DATA_FETCH_INTERVAL_SECONDS);
 
     res.json(response);
 
@@ -269,49 +182,22 @@ app.get("/satellite-positions", async (req, res) => {
 app.get('/space-flight/launches', async (req, res) => {
   console.log("Getting upcoming launches");
   
-  // Check cache first
-  const cacheKey = 'launches';
-  let response = cache.get(cacheKey);
-  
-  if (!response) {
-    // Fetch fresh data if not in cache
-    response = await getUpcomingLaunches();
-    cache.set(cacheKey, response, 5 * 60 * 1000); // Cache for 5 minutes
-  }
-  
+  const response = await getUpcomingLaunchesCached();
   res.json(response);
 });
 
 app.get('/space-flight/events', async (req, res) => {
   console.log("Getting upcoming events");
   
-  // Check cache first
-  const cacheKey = 'events';
-  let response = cache.get(cacheKey);
-  
-  if (!response) {
-    // Fetch fresh data if not in cache
-    response = await getUpcomingEvents();
-    cache.set(cacheKey, response, 5 * 60 * 1000); // Cache for 5 minutes
-  }
-  
+  const response = await getUpcomingEventsCached();
   res.json(response);
 });
 
 app.get('/space-flight/launcher-configurations', async (req, res) => {
   console.log("Getting launch vehicles");
   
-  // Check cache first
   const search = req.query.search;
-  const cacheKey = `launch_vehicles_${search}`;
-  let response = cache.get(cacheKey);
-  
-  if (!response) {
-    // Fetch fresh data if not in cache
-    response = await getLauncherConfigurations(search);
-    cache.set(cacheKey, response, 5 * 60 * 1000); // Cache for 5 minutes
-  }
-  
+  const response = await getLauncherConfigurationsCached(search);
   res.json(response);
 });
 

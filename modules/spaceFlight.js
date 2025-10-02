@@ -1,8 +1,10 @@
 import fetch from 'node-fetch';
+import cache from './cache.js';
 
 const LAUNCH_API_URL = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/';
 const EVENT_API_URL = 'https://ll.thespacedevs.com/2.2.0/event/upcoming/';
 const LAUNCHER_CONFIGURATIONS_API_URL = 'https://ll.thespacedevs.com/2.3.0/launcher_configurations/';
+const cacheDuration = 10 * 60 * 1000; // 5 minutes
 
 export const getUpcomingLaunches = async () => {
     try {
@@ -48,3 +50,40 @@ export const getLauncherConfigurations = async (search) => {
         throw error;
     }
 }
+
+// Cached wrapper functions
+export const getUpcomingLaunchesCached = async () => {
+    const cacheKey = 'launches';
+    let response = cache.get(cacheKey);
+    
+    if (!response) {
+        response = await getUpcomingLaunches();
+        cache.set(cacheKey, response, cacheDuration); // Cache for one hour
+    }
+    
+    return response;
+};
+
+export const getUpcomingEventsCached = async () => {
+    const cacheKey = 'events';
+    let response = cache.get(cacheKey);
+    
+    if (!response) {
+        response = await getUpcomingEvents();
+        cache.set(cacheKey, response, cacheDuration); // Cache for one hour
+    }
+    
+    return response;
+};
+
+export const getLauncherConfigurationsCached = async (search) => {
+    const cacheKey = `launch_vehicles_${search}`;
+    let response = cache.get(cacheKey);
+    
+    if (!response) {
+        response = await getLauncherConfigurations(search);
+        cache.set(cacheKey, response, cacheDuration); // Cache for one hour
+    }
+    
+    return response;
+};
