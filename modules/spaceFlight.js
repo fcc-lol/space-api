@@ -4,7 +4,7 @@ import cache from './cache.js';
 const LAUNCH_API_URL = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/';
 const EVENT_API_URL = 'https://ll.thespacedevs.com/2.2.0/event/upcoming/';
 const LAUNCHER_CONFIGURATIONS_API_URL = 'https://ll.thespacedevs.com/2.3.0/launcher_configurations/';
-const cacheDuration = 3600 * 1000; // 1 hour
+const cacheDuration = 10 * 60 * 1000; // 5 minutes
 
 export const getUpcomingLaunches = async () => {
     try {
