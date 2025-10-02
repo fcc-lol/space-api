@@ -7,7 +7,7 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 - **Space Weather Data**: Solar flares, coronal mass ejections (CMEs), and solar energetic particles (SEPs)
 - **Earth Imagery**: Latest satellite images of Earth from NASA's EPIC API
 - **Near Earth Objects**: Asteroid and comet data from NASA's NEO API
-- **Upcoming Space Launches**: Data on upcoming rocket launches from The Space Devs API
+- **Space Flight Data**: Upcoming rocket launches, space events, and launch vehicle configurations from The Space Devs API
 - **Satellite Tracking**: Find satellites passing above a specific location using the N2YO API.
 - **Smart Caching**: Built-in caching system to reduce API calls and improve response times
 - **Date Filtering**: Optional date range parameters for time-sensitive data
@@ -144,16 +144,41 @@ Retrieves Near Earth Object (asteroid and comet) data for the past week.
 GET /neos
 ```
 
-### Upcoming Space Launches
+### Space Flight Data
 
-#### GET `/launches`
+#### GET `/space-flight/launches`
 Retrieves upcoming space launch data from The Space Devs API.
 
 **No parameters required.**
 
 **Example:**
 ```bash
-GET /launches
+GET /space-flight/launches
+```
+
+#### GET `/space-flight/events`
+Retrieves upcoming space events from The Space Devs API.
+
+**No parameters required.**
+
+**Example:**
+```bash
+GET /space-flight/events
+```
+
+#### GET `/space-flight/launcher-configurations`
+Retrieves launch vehicle configurations from The Space Devs API.
+
+**Query Parameters:**
+- `search` (optional): Search term to filter launch vehicles by name
+
+**Examples:**
+```bash
+# Get all launch vehicle configurations
+GET /space-flight/launcher-configurations
+
+# Search for specific launch vehicles
+GET /space-flight/launcher-configurations?search=Falcon
 ```
 
 ### Satellite Tracking
@@ -238,6 +263,7 @@ This API integrates with several space data APIs:
 - **NASA DONKI API**: Solar flares, CMEs, and SEPs
 - **NASA EPIC API**: Earth imagery
 - **NASA NEO API**: Near Earth Objects
+- **The Space Devs API**: Space flight data including launches, events, and launch vehicles
 - **N2YO API**: Satellite tracking and orbital data
 
 ## 🗄️ Caching System
@@ -288,6 +314,18 @@ curl "http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10"
 # Get satellites above location using DMS format
 curl "http://localhost:3102/satellites-above?dms=51°30'26.6"N 0°7'39.6"W"
 
+# Get upcoming space launches
+curl "http://localhost:3102/space-flight/launches"
+
+# Get upcoming space events
+curl "http://localhost:3102/space-flight/events"
+
+# Get launch vehicle configurations
+curl "http://localhost:3102/space-flight/launcher-configurations"
+
+# Search for specific launch vehicles
+curl "http://localhost:3102/space-flight/launcher-configurations?search=Falcon"
+
 # Check cache status
 curl "http://localhost:3102/cache/status"
 ```
@@ -310,6 +348,22 @@ const earthImageUrl = await earthUrlResponse.json();
 // Get satellites above specific location
 const satellitesResponse = await fetch('http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10');
 const satellites = await satellitesResponse.json();
+
+// Get upcoming space launches
+const launchesResponse = await fetch('http://localhost:3102/space-flight/launches');
+const launches = await launchesResponse.json();
+
+// Get upcoming space events
+const eventsResponse = await fetch('http://localhost:3102/space-flight/events');
+const events = await eventsResponse.json();
+
+// Get launch vehicle configurations
+const launchersResponse = await fetch('http://localhost:3102/space-flight/launcher-configurations');
+const launchers = await launchersResponse.json();
+
+// Search for specific launch vehicles
+const falconResponse = await fetch('http://localhost:3102/space-flight/launcher-configurations?search=Falcon');
+const falconLaunchers = await falconResponse.json();
 ```
 
 ## 🤝 Contributing
@@ -327,6 +381,7 @@ This project is licensed under the ISC License.
 ## 🙏 Acknowledgments
 
 - [NASA APIs](https://api.nasa.gov/) for providing access to space data
+- [The Space Devs API](https://thespacedevs.com/) for space flight data
 - [N2YO API](https://www.n2yo.com/api/) for satellite tracking data
 - Express.js community for the excellent web framework
 - Node.js community for the runtime environment
