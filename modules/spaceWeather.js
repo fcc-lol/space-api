@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import { getDates } from './dates.js';
+import cache from './cache.js';
 
 dotenv.config();
 
@@ -23,3 +24,16 @@ export const fetchData = async (data, startDate, endDate) => {
         throw error;
     }
 }
+
+// Cached wrapper functions
+export const fetchDataCached = async (data, startDate, endDate) => {
+    const cacheKey = data.toLowerCase();
+    let response = cache.get(cacheKey);
+    
+    if (!response) {
+        response = await fetchData(data, startDate, endDate);
+        cache.set(cacheKey, response);
+    }
+    
+    return response;
+};

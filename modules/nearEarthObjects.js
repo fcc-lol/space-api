@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import { getDates } from './dates.js';
+import cache from './cache.js';
 
 dotenv.config();
 
@@ -18,4 +19,17 @@ export const getNeoFeed = async (startDate, endDate) => {
         console.error("Error fetching Near Earth Objects feed:", error);
         throw error;
     }
+};
+
+// Cached wrapper function
+export const getNeoFeedCached = async (startDate, endDate) => {
+    const cacheKey = 'neos';
+    let response = cache.get(cacheKey);
+    
+    if (!response) {
+        response = await getNeoFeed(startDate, endDate);
+        cache.set(cacheKey, response);
+    }
+    
+    return response;
 };
