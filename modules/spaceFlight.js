@@ -4,6 +4,7 @@ import cache from './cache.js';
 const LAUNCH_API_URL = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/';
 const EVENT_API_URL = 'https://ll.thespacedevs.com/2.2.0/event/upcoming/';
 const LAUNCHER_CONFIGURATIONS_API_URL = 'https://ll.thespacedevs.com/2.3.0/launcher_configurations/';
+const cacheDuration = 3600 * 1000; // 1 hour
 
 export const getUpcomingLaunches = async () => {
     try {
@@ -57,7 +58,7 @@ export const getUpcomingLaunchesCached = async () => {
     
     if (!response) {
         response = await getUpcomingLaunches();
-        cache.set(cacheKey, response, 3600 * 1000); // Cache for one hour
+        cache.set(cacheKey, response, cacheDuration); // Cache for one hour
     }
     
     return response;
@@ -69,7 +70,7 @@ export const getUpcomingEventsCached = async () => {
     
     if (!response) {
         response = await getUpcomingEvents();
-        cache.set(cacheKey, response, 3600 * 1000); // Cache for one hour
+        cache.set(cacheKey, response, cacheDuration); // Cache for one hour
     }
     
     return response;
@@ -81,7 +82,7 @@ export const getLauncherConfigurationsCached = async (search) => {
     
     if (!response) {
         response = await getLauncherConfigurations(search);
-        cache.set(cacheKey, response, 3600 * 1000); // Cache for one hour
+        cache.set(cacheKey, response, cacheDuration); // Cache for one hour
     }
     
     return response;
