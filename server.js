@@ -276,7 +276,7 @@ app.get('/space-flight/launches', async (req, res) => {
   if (!response) {
     // Fetch fresh data if not in cache
     response = await getUpcomingLaunches();
-    cache.set(cacheKey, response, 3600 * 1000); // Cache for one hour
+    cache.set(cacheKey, response, 5 * 60 * 1000); // Cache for 5 minutes
   }
   
   res.json(response);
@@ -292,7 +292,7 @@ app.get('/space-flight/events', async (req, res) => {
   if (!response) {
     // Fetch fresh data if not in cache
     response = await getUpcomingEvents();
-    cache.set(cacheKey, response, 3600 * 1000); // Cache for one hour
+    cache.set(cacheKey, response, 5 * 60 * 1000); // Cache for 5 minutes
   }
   
   res.json(response);
@@ -309,7 +309,7 @@ app.get('/space-flight/launcher-configurations', async (req, res) => {
   if (!response) {
     // Fetch fresh data if not in cache
     response = await getLauncherConfigurations(search);
-    cache.set(cacheKey, response, 3600 * 1000); // Cache for one hour
+    cache.set(cacheKey, response, 5 * 60 * 1000); // Cache for 5 minutes
   }
   
   res.json(response);
