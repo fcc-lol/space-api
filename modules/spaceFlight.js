@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 import cache from './cache.js';
 
-const LAUNCH_API_URL = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=5';
+const LAUNCH_API_URL = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=10';
 const EVENT_API_URL = 'https://ll.thespacedevs.com/2.2.0/event/upcoming/';
 const LAUNCHER_CONFIGURATIONS_API_URL = 'https://ll.thespacedevs.com/2.3.0/launcher_configurations/';
 
