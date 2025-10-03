@@ -179,14 +179,14 @@ app.get("/satellite-positions", async (req, res) => {
   }
 });
 
-app.get('/space-flight/launches', async (req, res) => {
+app.get('/spaceflight/launches', async (req, res) => {
   console.log("Getting upcoming launches");
   
   const response = await getUpcomingLaunchesCached();
   res.json(response);
 });
 
-app.get('/space-flight/next-launch', async (req, res) => {
+app.get('/spaceflight/next-launch', async (req, res) => {
   console.log("Getting next launch");
   
   const launches = await getUpcomingLaunchesCached();
@@ -194,14 +194,14 @@ app.get('/space-flight/next-launch', async (req, res) => {
   res.json(nextLaunch);
 });
 
-app.get('/space-flight/events', async (req, res) => {
+app.get('/spaceflight/events', async (req, res) => {
   console.log("Getting upcoming events");
   
   const response = await getUpcomingEventsCached();
   res.json(response);
 });
 
-app.get('/space-flight/launcher-configurations', async (req, res) => {
+app.get('/spaceflight/launcher-configurations', async (req, res) => {
   console.log("Getting launch vehicles");
   
   const search = req.query.search;

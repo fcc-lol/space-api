@@ -146,27 +146,27 @@ GET /neos
 
 ### Space Flight Data
 
-#### GET `/space-flight/launches`
+#### GET `/spaceflight/launches`
 Retrieves upcoming space launch data from The Space Devs API.
 
 **No parameters required.**
 
 **Example:**
 ```bash
-GET /space-flight/launches
+GET /spaceflight/launches
 ```
 
-#### GET `/space-flight/events`
+#### GET `/spaceflight/events`
 Retrieves upcoming space events from The Space Devs API.
 
 **No parameters required.**
 
 **Example:**
 ```bash
-GET /space-flight/events
+GET /spaceflight/events
 ```
 
-#### GET `/space-flight/launcher-configurations`
+#### GET `/spaceflight/launcher-configurations`
 Retrieves launch vehicle configurations from The Space Devs API.
 
 **Query Parameters:**
@@ -175,10 +175,10 @@ Retrieves launch vehicle configurations from The Space Devs API.
 **Examples:**
 ```bash
 # Get all launch vehicle configurations
-GET /space-flight/launcher-configurations
+GET /spaceflight/launcher-configurations
 
 # Search for specific launch vehicles
-GET /space-flight/launcher-configurations?search=Falcon
+GET /spaceflight/launcher-configurations?search=Falcon
 ```
 
 ### Satellite Tracking
@@ -315,16 +315,16 @@ curl "http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10"
 curl "http://localhost:3102/satellites-above?dms=51°30'26.6"N 0°7'39.6"W"
 
 # Get upcoming space launches
-curl "http://localhost:3102/space-flight/launches"
+curl "http://localhost:3102/spaceflight/launches"
 
 # Get upcoming space events
-curl "http://localhost:3102/space-flight/events"
+curl "http://localhost:3102/spaceflight/events"
 
 # Get launch vehicle configurations
-curl "http://localhost:3102/space-flight/launcher-configurations"
+curl "http://localhost:3102/spaceflight/launcher-configurations"
 
 # Search for specific launch vehicles
-curl "http://localhost:3102/space-flight/launcher-configurations?search=Falcon"
+curl "http://localhost:3102/spaceflight/launcher-configurations?search=Falcon"
 
 # Check cache status
 curl "http://localhost:3102/cache/status"
@@ -350,19 +350,19 @@ const satellitesResponse = await fetch('http://localhost:3102/satellites-above?l
 const satellites = await satellitesResponse.json();
 
 // Get upcoming space launches
-const launchesResponse = await fetch('http://localhost:3102/space-flight/launches');
+const launchesResponse = await fetch('http://localhost:3102/spaceflight/launches');
 const launches = await launchesResponse.json();
 
 // Get upcoming space events
-const eventsResponse = await fetch('http://localhost:3102/space-flight/events');
+const eventsResponse = await fetch('http://localhost:3102/spaceflight/events');
 const events = await eventsResponse.json();
 
 // Get launch vehicle configurations
-const launchersResponse = await fetch('http://localhost:3102/space-flight/launcher-configurations');
+const launchersResponse = await fetch('http://localhost:3102/spaceflight/launcher-configurations');
 const launchers = await launchersResponse.json();
 
 // Search for specific launch vehicles
-const falconResponse = await fetch('http://localhost:3102/space-flight/launcher-configurations?search=Falcon');
+const falconResponse = await fetch('http://localhost:3102/spaceflight/launcher-configurations?search=Falcon');
 const falconLaunchers = await falconResponse.json();
 ```
 
