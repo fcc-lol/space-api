@@ -13,7 +13,7 @@ const app = express();
 const port = process.env.PORT || 3102;
 
 // How often (in seconds) to fetch fresh satellite data to avoid N2YO rate limits.
-const SATELLITE_DATA_FETCH_INTERVAL_SECONDS = 60;
+const SATELLITE_DATA_FETCH_INTERVAL_SECONDS = 2 * 60;
 
 // Middleware to parse JSON bodies
 app.use(express.json());

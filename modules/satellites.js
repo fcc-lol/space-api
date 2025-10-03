@@ -63,7 +63,7 @@ export const satellitesAboveCached = async (lat, lon, alt, radius) => {
 
 export const satellitePositionsCached = async (lat, lon, satId, seconds = 40) => {
     const cacheKey = `satellite_positions_${satId}`;
-    const cacheDuration = 60 * 1000; // 60 seconds
+    const cacheDuration = 2 * 60 * 1000; // 60 seconds
     let response = cache.get(cacheKey);
     
     if (!response) {
