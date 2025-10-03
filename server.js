@@ -186,6 +186,14 @@ app.get('/space-flight/launches', async (req, res) => {
   res.json(response);
 });
 
+app.get('/space-flight/next-launch', async (req, res) => {
+  console.log("Getting next launch");
+  
+  const launches = await getUpcomingLaunchesCached();
+  const nextLaunch = launches.results[0];
+  res.json(nextLaunch);
+});
+
 app.get('/space-flight/events', async (req, res) => {
   console.log("Getting upcoming events");
   
