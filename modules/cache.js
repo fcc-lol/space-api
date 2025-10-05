@@ -40,6 +40,28 @@ class Cache {
         console.log(`Cached data for ${key}`);
     }
 
+    // Peek at raw cached data regardless of expiry (for diagnostics/UI)
+    peek(key) {
+        const data = this.cache.get(key);
+        const timestampData = this.timestamps.get(key);
+        if (!timestampData) {
+            return { exists: false, isValid: false, age: null, timeUntilExpiry: null, duration: null, timestamp: null, data: null };
+        }
+        const now = Date.now();
+        const duration = this._getCacheDuration(key);
+        const age = now - timestampData.timestamp;
+        const isValid = age < duration;
+        return {
+            exists: typeof data !== 'undefined',
+            isValid,
+            age: Math.round(age / 1000),
+            timeUntilExpiry: isValid ? Math.round((duration - age) / 1000) : 0,
+            duration,
+            timestamp: timestampData.timestamp,
+            data
+        };
+    }
+
     // Check if cache entry exists and is valid
     has(key) {
         const timestampData = this.timestamps.get(key);

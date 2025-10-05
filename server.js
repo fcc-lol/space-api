@@ -8,6 +8,8 @@ import {getUpcomingLaunchesCached, getUpcomingEventsCached, getLauncherConfigura
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 const port = process.env.PORT || 3102;
@@ -15,11 +17,45 @@ const port = process.env.PORT || 3102;
 // How often (in seconds) to fetch fresh satellite data to avoid N2YO rate limits.
 const SATELLITE_DATA_FETCH_INTERVAL_SECONDS = 2 * 60;
 
+// Activity tracking
+const activityLog = [];
+const MAX_ACTIVITY_LOG_SIZE = 100;
+
 // Middleware to parse JSON bodies
 app.use(express.json());
 
 // Enable CORS for all routes and origins
 app.use(cors());
+
+// Activity tracking middleware
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  const originalSend = res.send;
+  
+  res.send = function(data) {
+    const duration = Date.now() - startTime;
+    const activity = {
+      timestamp: new Date().toISOString(),
+      method: req.method,
+      path: req.path,
+      query: req.query,
+      statusCode: res.statusCode,
+      duration: duration,
+      userAgent: req.get('User-Agent') || 'Unknown',
+      ip: req.ip || req.connection.remoteAddress || 'Unknown'
+    };
+    
+    // Add to activity log
+    activityLog.unshift(activity);
+    if (activityLog.length > MAX_ACTIVITY_LOG_SIZE) {
+      activityLog.pop();
+    }
+    
+    return originalSend.call(this, data);
+  };
+  
+  next();
+});
 
 // Register refresh functions with the cache
 cache.registerRefreshFunction('solarflares', () => fetchDataCached('solarFlares'));
@@ -38,6 +74,14 @@ setInterval(() => {
 
 app.get('/', (req, res) => {
   res.send('space-api');
+});
+
+// Serve the status page
+app.get('/status-page', (req, res) => {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const filePath = path.join(__dirname, 'status-page.html');
+  res.sendFile(filePath);
 });
 
 app.get('/solarflares', async (req, res) => {
@@ -223,6 +267,169 @@ app.get('/dmstodecimals', (req, res) => {
 // Add a cache status endpoint for debugging
 app.get('/cache/status', (req, res) => {
   res.json(cache.getStatus());
+});
+
+// Fetch raw cache contents for a given key
+app.get('/cache/item', (req, res) => {
+  const key = req.query.key;
+  if (!key) {
+    return res.status(400).json({ error: 'Missing key query parameter' });
+  }
+  try {
+    const info = cache.peek(key);
+    if (!info.exists) {
+      return res.status(404).json({ error: `No cache entry for key: ${key}` });
+    }
+    res.json({ key, ...info });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read cache entry', message: error.message });
+  }
+});
+
+// Enhanced status endpoint with comprehensive information
+app.get('/status', (req, res) => {
+  const cacheStatus = cache.getStatus();
+  const now = Date.now();
+  
+  // Define data sources and their characteristics
+  const dataSources = {
+    'solarflares': {
+      name: 'Solar Flares',
+      description: 'NASA DONKI Solar Flare data',
+      refreshInterval: '15 minutes',
+      cacheDuration: '1 hour',
+      apiSource: 'NASA DONKI API',
+      endpoint: '/solarflares'
+    },
+    'sep': {
+      name: 'Solar Energetic Particles (SEP)',
+      description: 'NASA DONKI SEP event data',
+      refreshInterval: '15 minutes',
+      cacheDuration: '1 hour',
+      apiSource: 'NASA DONKI API',
+      endpoint: '/sep'
+    },
+    'cmes': {
+      name: 'Coronal Mass Ejections (CMEs)',
+      description: 'NASA DONKI CME data',
+      refreshInterval: '15 minutes',
+      cacheDuration: '1 hour',
+      apiSource: 'NASA DONKI API',
+      endpoint: '/cmes'
+    },
+    'neos': {
+      name: 'Near Earth Objects',
+      description: 'NASA NEO feed data',
+      refreshInterval: '15 minutes',
+      cacheDuration: '1 hour',
+      apiSource: 'NASA NEO API',
+      endpoint: '/neos'
+    },
+    'launches': {
+      name: 'Upcoming Launches',
+      description: 'Space flight launch data',
+      refreshInterval: '15 minutes',
+      cacheDuration: '2 hours',
+      apiSource: 'The Space Devs API',
+      endpoint: '/spaceflight/launches'
+    },
+    'events': {
+      name: 'Space Events',
+      description: 'Upcoming space events',
+      refreshInterval: '15 minutes',
+      cacheDuration: '2 hours',
+      apiSource: 'The Space Devs API',
+      endpoint: '/spaceflight/events'
+    },
+    'launchVehicles': {
+      name: 'Launch Vehicles',
+      description: 'Launch vehicle configurations',
+      refreshInterval: '15 minutes',
+      cacheDuration: '1 month',
+      apiSource: 'The Space Devs API',
+      endpoint: '/spaceflight/launcher-configurations'
+    }
+  };
+
+  // Process cache status with additional information
+  const processedCacheStatus = {};
+  for (const [key, status] of Object.entries(cacheStatus)) {
+    const sourceInfo = dataSources[key] || {
+      name: key,
+      description: 'Unknown data source',
+      refreshInterval: 'Unknown',
+      cacheDuration: 'Unknown',
+      apiSource: 'Unknown',
+      endpoint: 'Unknown'
+    };
+    
+    processedCacheStatus[key] = {
+      ...status,
+      ...sourceInfo,
+      lastUpdated: new Date(now - (status.age * 1000)).toISOString(),
+      nextRefresh: new Date(now + (status.timeUntilExpiry * 1000)).toISOString(),
+      status: status.isValid ? 'healthy' : 'expired'
+    };
+  }
+
+  // Get server uptime
+  const uptime = process.uptime();
+  const uptimeHours = Math.floor(uptime / 3600);
+  const uptimeMinutes = Math.floor((uptime % 3600) / 60);
+  const uptimeSeconds = Math.floor(uptime % 60);
+
+  // Calculate activity statistics
+  const recentActivity = activityLog.slice(0, 20); // Last 20 requests
+  const totalRequests = activityLog.length;
+  const requestsLastHour = activityLog.filter(a => 
+    new Date(a.timestamp) > new Date(now - 60 * 60 * 1000)
+  ).length;
+  
+  // Group requests by endpoint
+  const endpointStats = {};
+  activityLog.forEach(activity => {
+    const endpoint = activity.path;
+    if (!endpointStats[endpoint]) {
+      endpointStats[endpoint] = { count: 0, avgDuration: 0, lastRequest: null };
+    }
+    endpointStats[endpoint].count++;
+    endpointStats[endpoint].avgDuration = 
+      (endpointStats[endpoint].avgDuration * (endpointStats[endpoint].count - 1) + activity.duration) / 
+      endpointStats[endpoint].count;
+    if (!endpointStats[endpoint].lastRequest || 
+        new Date(activity.timestamp) > new Date(endpointStats[endpoint].lastRequest)) {
+      endpointStats[endpoint].lastRequest = activity.timestamp;
+    }
+  });
+
+  const status = {
+    server: {
+      status: 'online',
+      uptime: `${uptimeHours}h ${uptimeMinutes}m ${uptimeSeconds}s`,
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development'
+    },
+    cache: {
+      totalEntries: Object.keys(cacheStatus).length,
+      healthyEntries: Object.values(cacheStatus).filter(s => s.isValid).length,
+      expiredEntries: Object.values(cacheStatus).filter(s => !s.isValid).length,
+      entries: processedCacheStatus
+    },
+    activity: {
+      totalRequests,
+      requestsLastHour,
+      recentActivity,
+      endpointStats
+    },
+    dataSources: dataSources,
+    refreshSchedule: {
+      nextRefresh: new Date(now + (15 * 60 * 1000)).toISOString(),
+      interval: '15 minutes'
+    }
+  };
+
+  res.json(status);
 });
 
 // Force refresh endpoint - clear specific cache entry or all cache
