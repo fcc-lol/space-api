@@ -43,8 +43,6 @@ export const satellitesAboveCached = async (lat, lon, alt, radius) => {
         response = await satellitesAbove(lat, lon, alt, radius);
         
         if (!response.error) {
-            // Cache for 60 seconds to avoid N2YO rate limits
-            cache.set(cacheKey, response, 60 * 1000);
             console.error(`N2YO API Usage for /above is ${response.info.transactionscount} / 100 calls per hour`);
             response.info = {
                 ...response.info,
@@ -56,6 +54,8 @@ export const satellitesAboveCached = async (lat, lon, alt, radius) => {
                 latitude: lat, longitude: lon, altitude: alt, searchRadius: radius
             };
         }
+        // Cache for 60 seconds to avoid N2YO rate limits
+        cache.set(cacheKey, response, 2 * 60 * 1000);
     }
     
     return response;
