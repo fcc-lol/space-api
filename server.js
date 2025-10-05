@@ -120,7 +120,14 @@ app.get('/neos', async (req, res) => {
   res.json(response);
 });
 
+let lastSatellitesAboveRequestTime = 0;
+
 app.get('/satellites-above', async (req, res) => {
+  const now = Date.now();
+  if (now - lastSatellitesAboveRequestTime < 1000) {
+    return res.status(429).json({ error: 'Too many requests. Please wait at least 1 second between requests.' });
+  }
+  lastSatellitesAboveRequestTime = now;
   console.log("Getting satellites above");
   try {
     // Default location: NYC
