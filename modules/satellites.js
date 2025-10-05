@@ -6,6 +6,9 @@ dotenv.config();
 
 const API_URL = `https://api.n2yo.com/rest/v1/satellite/`
 
+// Deduplicate in-flight requests per cache key to avoid race conditions
+const inFlightAboveRequests = new Map();
+
 export const satellitesAbove = async (lat, lon, alt, radius) => {
     console.log("satellitesAbove");
     const url = `${API_URL}above/${lat}/${lon}/${alt}/${radius}/0/&apiKey=${process.env.N2YO_API_KEY}`;
@@ -39,23 +42,34 @@ export const satellitesAboveCached = async (lat, lon, alt, radius) => {
     let response = cache.get(cacheKey);
     
     if (!response) {
-        console.warn(`Cache miss for ${cacheKey}, fetching fresh satellite data.`);
-        response = await satellitesAbove(lat, lon, alt, radius);
-        
-        if (!response.error) {
-            console.error(`N2YO API Usage for /above is ${response.info.transactionscount} / 100 calls per hour`);
-            response.info = {
-                ...response.info,
-                latitude: lat, longitude: lon, altitude: alt, searchRadius: radius
-            }
-        } else {
-            // If there was an error, still include the request info
-            response.info = {
-                latitude: lat, longitude: lon, altitude: alt, searchRadius: radius
-            };
+        // If a request for this key is already in flight, await it instead of starting a new one
+        if (!inFlightAboveRequests.has(cacheKey)) {
+            console.warn(`Cache miss for ${cacheKey}, fetching fresh satellite data.`);
+            const promise = (async () => {
+                try {
+                    const fresh = await satellitesAbove(lat, lon, alt, radius);
+                    if (!fresh.error) {
+                        console.error(`N2YO API Usage for /above is ${fresh.info.transactionscount} / 100 calls per hour`);
+                        fresh.info = {
+                            ...fresh.info,
+                            latitude: lat, longitude: lon, altitude: alt, searchRadius: radius
+                        };
+                    } else {
+                        // If there was an error, still include the request info
+                        fresh.info = {
+                            latitude: lat, longitude: lon, altitude: alt, searchRadius: radius
+                        };
+                    }
+                    // Cache for 2 minutes to avoid N2YO rate limits
+                    cache.set(cacheKey, fresh, 2 * 60 * 1000);
+                    return fresh;
+                } finally {
+                    inFlightAboveRequests.delete(cacheKey);
+                }
+            })();
+            inFlightAboveRequests.set(cacheKey, promise);
         }
-        // Cache for 60 seconds to avoid N2YO rate limits
-        cache.set(cacheKey, response, 2 * 60 * 1000);
+        response = await inFlightAboveRequests.get(cacheKey);
     }
     
     return response;
