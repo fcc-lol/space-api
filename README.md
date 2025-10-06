@@ -98,38 +98,55 @@ GET /cmes?startDate=2024-01-01&endDate=2024-01-07
 
 ### Earth Imagery
 
-#### GET `/earthnow/imageurl`
-Retrieves the URL for the latest Earth imagery from NASA's EPIC API.
+#### GET `/earthnow/list`
+Retrieves a list of available Earth imagery from NASA's EPIC API.
 
 **Query Parameters:**
-- `date` (optional): Specific date in YYYY-MM-DD format
+- `date` (optional): Specific date in YYYY-MM-DD format. Defaults to 'latest'
 - `variant` (optional): Image variant ('natural' or 'enhanced'). Defaults to 'natural'
 
 **Example:**
 ```bash
-GET /earthnow/imageurl?date=2024-01-01&variant=natural
+GET /earthnow/list?date=2024-01-01&variant=natural
+```
+
+#### GET `/earthnow/imageurl`
+Retrieves the URL for the latest Earth imagery from NASA's EPIC API.
+
+**Query Parameters:**
+- `date` (optional): Specific date in YYYY-MM-DD format. Defaults to 'latest'
+- `variant` (optional): Image variant ('natural' or 'enhanced'). Defaults to 'natural'
+- `index` (optional): Image index for the specified date. Defaults to 0
+
+**Example:**
+```bash
+GET /earthnow/imageurl?date=2024-01-01&variant=natural&index=0
 ```
 
 #### GET `/earthnow/image`
 Retrieves the actual Earth image data from NASA's EPIC API.
 
 **Query Parameters:**
-- `date` (optional): Specific date in YYYY-MM-DD format
+- `date` (optional): Specific date in YYYY-MM-DD format. Defaults to 'latest'
 - `variant` (optional): Image variant ('natural' or 'enhanced'). Defaults to 'natural'
+- `index` (optional): Image index for the specified date. Defaults to 0
 
 **Example:**
 ```bash
-GET /earthnow/image?date=2024-01-01&variant=enhanced
+GET /earthnow/image?date=2024-01-01&variant=enhanced&index=0
 ```
 
 #### GET `/earthnow/metadata`
 Retrieves metadata about the latest Earth imagery.
 
-**No parameters required.**
+**Query Parameters:**
+- `date` (optional): Specific date in YYYY-MM-DD format. Defaults to 'latest'
+- `variant` (optional): Image variant ('natural' or 'enhanced'). Defaults to 'natural'
+- `index` (optional): Image index for the specified date. Defaults to 0
 
 **Example:**
 ```bash
-GET /earthnow/metadata
+GET /earthnow/metadata?date=2024-01-01&variant=natural&index=0
 ```
 
 ### Near Earth Objects
@@ -154,6 +171,16 @@ Retrieves upcoming space launch data from The Space Devs API.
 **Example:**
 ```bash
 GET /spaceflight/launches
+```
+
+#### GET `/spaceflight/next-launch`
+Retrieves the next upcoming space launch from The Space Devs API.
+
+**No parameters required.**
+
+**Example:**
+```bash
+GET /spaceflight/next-launch
 ```
 
 #### GET `/spaceflight/events`
@@ -191,7 +218,7 @@ Retrieves satellites currently passing above a specific location using the N2YO 
 - `lon` (optional): Longitude in decimal degrees. Defaults to NYC (-73.98°W)
 - `dms` (optional): Coordinates in DMS format (e.g., `40°41'34.4"N 73°58'54.2"W`). Overrides lat/lon if provided
 - `alt` (optional): Observer altitude in kilometers. Defaults to 0
-- `radius` (optional): Search radius in degrees. Defaults to 15
+- `radius` (optional): Search radius in degrees. Defaults to 7
 
 **Examples:**
 ```bash
@@ -208,42 +235,30 @@ GET /satellites-above?dms=51°30'26.6"N 0°7'39.6"W
 GET /satellites-above?lat=40.7128&lon=-74.0060&alt=100&radius=20
 ```
 
-### Cache Management
+#### GET `/satellite-positions`
+Retrieves satellite position data for a specific satellite using the N2YO API.
 
-#### GET `/cache/status`
-Returns the current status of all cached data including timestamps and cache keys.
+**Query Parameters:**
+- `satid` (required): Satellite ID from the N2YO database
 
 **Example:**
 ```bash
-GET /cache/status
+GET /satellite-positions?satid=25544
 ```
 
-#### POST `/cache/refresh`
-Forces a refresh of cached data.
+### Utility Endpoints
 
-**Request Body:**
-```json
-{
-  "key": "solarflares"  // Optional: specific cache key to refresh
-}
-```
+#### GET `/dmstodecimals`
+Converts coordinates from Degrees, Minutes, Seconds (DMS) format to decimal degrees.
 
-**Examples:**
+**Query Parameters:**
+- `dms` (required): Coordinates in DMS format (e.g., `40°41'34.4"N 73°58'54.2"W`)
+
+**Example:**
 ```bash
-# Refresh specific cache entry
-POST /cache/refresh
-Content-Type: application/json
-
-{
-  "key": "solarflares"
-}
-
-# Refresh all cache entries
-POST /cache/refresh
-Content-Type: application/json
-
-{}
+GET /dmstodecimals?dms=40°41'34.4"N 73°58'54.2"W
 ```
+
 
 ## 🔧 Configuration
 
@@ -296,6 +311,9 @@ curl "http://localhost:3102/solarflares"
 # Get CMEs for a specific date range
 curl "http://localhost:3102/cmes?startDate=2024-01-01&endDate=2024-01-07"
 
+# Get Earth imagery list
+curl "http://localhost:3102/earthnow/list"
+
 # Get latest Earth imagery URL
 curl "http://localhost:3102/earthnow/imageurl"
 
@@ -314,8 +332,14 @@ curl "http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10"
 # Get satellites above location using DMS format
 curl "http://localhost:3102/satellites-above?dms=51°30'26.6"N 0°7'39.6"W"
 
+# Get satellite positions for ISS (satellite ID 25544)
+curl "http://localhost:3102/satellite-positions?satid=25544"
+
 # Get upcoming space launches
 curl "http://localhost:3102/spaceflight/launches"
+
+# Get next upcoming launch
+curl "http://localhost:3102/spaceflight/next-launch"
 
 # Get upcoming space events
 curl "http://localhost:3102/spaceflight/events"
@@ -326,8 +350,8 @@ curl "http://localhost:3102/spaceflight/launcher-configurations"
 # Search for specific launch vehicles
 curl "http://localhost:3102/spaceflight/launcher-configurations?search=Falcon"
 
-# Check cache status
-curl "http://localhost:3102/cache/status"
+# Convert DMS coordinates to decimal
+curl "http://localhost:3102/dmstodecimals?dms=40°41'34.4\"N 73°58'54.2\"W"
 ```
 
 ### Using JavaScript/Fetch
@@ -341,17 +365,33 @@ const solarFlares = await response.json();
 const neosResponse = await fetch('http://localhost:3102/neos');
 const neos = await neosResponse.json();
 
+// Get Earth imagery list
+const earthListResponse = await fetch('http://localhost:3102/earthnow/list');
+const earthList = await earthListResponse.json();
+
 // Get Earth imagery URL
 const earthUrlResponse = await fetch('http://localhost:3102/earthnow/imageurl');
 const earthImageUrl = await earthUrlResponse.json();
+
+// Get Earth imagery metadata
+const earthMetadataResponse = await fetch('http://localhost:3102/earthnow/metadata');
+const earthMetadata = await earthMetadataResponse.json();
 
 // Get satellites above specific location
 const satellitesResponse = await fetch('http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10');
 const satellites = await satellitesResponse.json();
 
+// Get satellite positions for ISS
+const satellitePositionsResponse = await fetch('http://localhost:3102/satellite-positions?satid=25544');
+const satellitePositions = await satellitePositionsResponse.json();
+
 // Get upcoming space launches
 const launchesResponse = await fetch('http://localhost:3102/spaceflight/launches');
 const launches = await launchesResponse.json();
+
+// Get next upcoming launch
+const nextLaunchResponse = await fetch('http://localhost:3102/spaceflight/next-launch');
+const nextLaunch = await nextLaunchResponse.json();
 
 // Get upcoming space events
 const eventsResponse = await fetch('http://localhost:3102/spaceflight/events');
@@ -364,6 +404,10 @@ const launchers = await launchersResponse.json();
 // Search for specific launch vehicles
 const falconResponse = await fetch('http://localhost:3102/spaceflight/launcher-configurations?search=Falcon');
 const falconLaunchers = await falconResponse.json();
+
+// Convert DMS coordinates to decimal
+const dmsResponse = await fetch('http://localhost:3102/dmstodecimals?dms=40°41\'34.4"N 73°58\'54.2"W');
+const decimalCoords = await dmsResponse.json();
 ```
 
 ## 🤝 Contributing
