@@ -6,6 +6,7 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 
 - **Space Weather Data**: Solar flares, coronal mass ejections (CMEs), and solar energetic particles (SEPs)
 - **Earth Imagery**: Latest satellite images of Earth from NASA's EPIC API
+- **Sun Images**: High-resolution solar imagery from multiple wavelengths using Helioviewer API
 - **Near Earth Objects**: Asteroid and comet data from NASA's NEO API
 - **Space Flight Data**: Upcoming rocket launches, space events, and launch vehicle configurations from The Space Devs API
 - **Satellite Tracking**: Find satellites passing above a specific location using the N2YO API.
@@ -17,7 +18,7 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 
 - **Node.js** with ES modules
 - **Express.js** web framework
-- **NASA, N2YO, & The Space Devs APIs** for space data
+- **NASA, Helioviewer, N2YO, & The Space Devs APIs** for space data
 - **Custom caching system** for performance optimization
 
 ## 📋 Prerequisites
@@ -149,6 +150,79 @@ Retrieves metadata about the latest Earth imagery.
 GET /earthnow/metadata?date=2024-01-01&variant=natural&index=0
 ```
 
+### Sun Images
+
+#### GET `/sun/metadata`
+Retrieves metadata for sun images from the Helioviewer API.
+
+**Query Parameters:**
+- `date` (optional): Specific date in YYYY-MM-DD format or ISO format. Defaults to 'latest'
+- `wavelength` (optional): Solar observation wavelength. Defaults to '171'. See `/sun/wavelengths` for available options
+
+**Example:**
+```bash
+GET /sun/metadata?date=2024-01-01&wavelength=304
+```
+
+#### GET `/sun/imageurl`
+Retrieves the direct URL for downloading sun image data (JPEG2000 format).
+
+**Query Parameters:**
+- `date` (optional): Specific date in YYYY-MM-DD format or ISO format. Defaults to 'latest'
+- `wavelength` (optional): Solar observation wavelength. Defaults to '171'
+
+**Example:**
+```bash
+GET /sun/imageurl?wavelength=193
+```
+
+#### GET `/sun/image`
+Redirects to the actual sun image data from the Helioviewer API.
+
+**Query Parameters:**
+- `date` (optional): Specific date in YYYY-MM-DD format or ISO format. Defaults to 'latest'
+- `wavelength` (optional): Solar observation wavelength. Defaults to '171'
+
+**Example:**
+```bash
+GET /sun/image?date=2024-01-01&wavelength=211
+```
+
+#### GET `/sun/screenshot`
+Generates a custom PNG screenshot of the sun with specified dimensions.
+
+**Query Parameters:**
+- `date` (optional): Specific date in YYYY-MM-DD format or ISO format. Defaults to 'latest'
+- `wavelength` (optional): Solar observation wavelength. Defaults to '171'
+- `width` (optional): Screenshot width in pixels. Defaults to 1024
+- `height` (optional): Screenshot height in pixels. Defaults to 1024
+- `imageScale` (optional): Image scale in arcseconds per pixel. Defaults to 2.4204409
+
+**Example:**
+```bash
+GET /sun/screenshot?width=512&height=512&wavelength=304
+```
+
+#### GET `/sun/wavelengths`
+Retrieves available solar observation wavelengths and their descriptions.
+
+**No parameters required.**
+
+**Example:**
+```bash
+GET /sun/wavelengths
+```
+
+#### GET `/sun/datasources`
+Retrieves all available data sources from the Helioviewer API.
+
+**No parameters required.**
+
+**Example:**
+```bash
+GET /sun/datasources
+```
+
 ### Near Earth Objects
 
 #### GET `/neos`
@@ -277,6 +351,7 @@ This API integrates with several space data APIs:
 
 - **NASA DONKI API**: Solar flares, CMEs, and SEPs
 - **NASA EPIC API**: Earth imagery
+- **Helioviewer API**: High-resolution solar imagery from multiple observatories (SDO, SOHO, STEREO)
 - **NASA NEO API**: Near Earth Objects
 - **The Space Devs API**: Space flight data including launches, events, and launch vehicles
 - **N2YO API**: Satellite tracking and orbital data
@@ -322,6 +397,27 @@ curl "http://localhost:3102/earthnow/image"
 
 # Get Earth imagery metadata
 curl "http://localhost:3102/earthnow/metadata"
+
+# Get sun image metadata (default: latest, 171Å)
+curl "http://localhost:3102/sun/metadata"
+
+# Get sun image metadata for specific wavelength and date
+curl "http://localhost:3102/sun/metadata?date=2024-01-01&wavelength=304"
+
+# Get sun image URL
+curl "http://localhost:3102/sun/imageurl?wavelength=193"
+
+# Get sun image (redirects to actual image)
+curl "http://localhost:3102/sun/image?wavelength=211"
+
+# Get sun screenshot with custom dimensions
+curl "http://localhost:3102/sun/screenshot?width=512&height=512&wavelength=171"
+
+# Get available solar wavelengths
+curl "http://localhost:3102/sun/wavelengths"
+
+# Get sun data sources
+curl "http://localhost:3102/sun/datasources"
 
 # Get satellites above NYC (default location)
 curl "http://localhost:3102/satellites-above"
@@ -376,6 +472,22 @@ const earthImageUrl = await earthUrlResponse.json();
 // Get Earth imagery metadata
 const earthMetadataResponse = await fetch('http://localhost:3102/earthnow/metadata');
 const earthMetadata = await earthMetadataResponse.json();
+
+// Get sun image metadata
+const sunMetadataResponse = await fetch('http://localhost:3102/sun/metadata?wavelength=304');
+const sunMetadata = await sunMetadataResponse.json();
+
+// Get sun image URL
+const sunUrlResponse = await fetch('http://localhost:3102/sun/imageurl?wavelength=193');
+const sunImageUrl = await sunUrlResponse.json();
+
+// Get available solar wavelengths
+const wavelengthsResponse = await fetch('http://localhost:3102/sun/wavelengths');
+const wavelengths = await wavelengthsResponse.json();
+
+// Get sun data sources
+const sunDataSourcesResponse = await fetch('http://localhost:3102/sun/datasources');
+const sunDataSources = await sunDataSourcesResponse.json();
 
 // Get satellites above specific location
 const satellitesResponse = await fetch('http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10');
