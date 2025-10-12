@@ -177,18 +177,6 @@ GET /sun/imageurl?wavelength=193
 ```
 
 #### GET `/sun/image`
-Redirects to the actual sun image data from the Helioviewer API.
-
-**Query Parameters:**
-- `date` (optional): Specific date in YYYY-MM-DD format or ISO format. Defaults to 'latest'
-- `wavelength` (optional): Solar observation wavelength. Defaults to '171'
-
-**Example:**
-```bash
-GET /sun/image?date=2024-01-01&wavelength=211
-```
-
-#### GET `/sun/screenshot`
 Generates a custom PNG screenshot of the sun with specified dimensions.
 
 **Query Parameters:**
@@ -200,7 +188,7 @@ Generates a custom PNG screenshot of the sun with specified dimensions.
 
 **Example:**
 ```bash
-GET /sun/screenshot?width=512&height=512&wavelength=304
+GET /sun/image?width=512&height=512&wavelength=304
 ```
 
 #### GET `/sun/wavelengths`
@@ -407,11 +395,8 @@ curl "http://localhost:3102/sun/metadata?date=2024-01-01&wavelength=304"
 # Get sun image URL
 curl "http://localhost:3102/sun/imageurl?wavelength=193"
 
-# Get sun image (redirects to actual image)
-curl "http://localhost:3102/sun/image?wavelength=211"
-
-# Get sun screenshot with custom dimensions
-curl "http://localhost:3102/sun/screenshot?width=512&height=512&wavelength=171"
+# Get sun image with custom dimensions
+curl "http://localhost:3102/sun/image?width=512&height=512&wavelength=171"
 
 # Get available solar wavelengths
 curl "http://localhost:3102/sun/wavelengths"
@@ -480,6 +465,10 @@ const sunMetadata = await sunMetadataResponse.json();
 // Get sun image URL
 const sunUrlResponse = await fetch('http://localhost:3102/sun/imageurl?wavelength=193');
 const sunImageUrl = await sunUrlResponse.json();
+
+// Get sun image with custom dimensions
+const sunImageResponse = await fetch('http://localhost:3102/sun/image?width=512&height=512&wavelength=171');
+// This returns the image data directly
 
 // Get available solar wavelengths
 const wavelengthsResponse = await fetch('http://localhost:3102/sun/wavelengths');

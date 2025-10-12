@@ -245,21 +245,6 @@ app.get("/sun/image", async (req, res) => {
   try {
     const date = req.query.date || "latest";
     const wavelength = req.query.wavelength || "193";
-
-    const imageUrl = await getSunImageUrl(date, wavelength);
-    res.redirect(imageUrl);
-  } catch (error) {
-    console.error("Error getting sun image:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to get sun image", message: error.message });
-  }
-});
-
-app.get("/sun/screenshot", async (req, res) => {
-  try {
-    const date = req.query.date || "latest";
-    const wavelength = req.query.wavelength || "193";
     const width = parseInt(req.query.width) || 1024;
     const height = parseInt(req.query.height) || 1024;
     const imageScale = parseFloat(req.query.imageScale) || 2.4204409;
