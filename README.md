@@ -281,26 +281,31 @@ Retrieves comprehensive moon data including phase information, imagery, rise/set
 ```json
 {
   "phase": {
-    "percent": 57.61, // Current phase percentage (0-100)
-    "name": "Waning Gibbous", // Phase name
+    "percent": 57.61, // Illuminated percentage (0=new moon, 100=full moon)
+    "name": "Waning Gibbous", // Phase name (from USNO)
     "illumination": 51, // Illumination percentage
-    "age": 21.254 // Days since new moon
+    "illuminationUnit": "%",
+    "age": 21.254, // Age since start of lunar cycle
+    "ageUnit": "days"
   },
   "times": {
-    "rise": "10:46 PM", // Moonrise time (12-hour format)
-    "set": "1:38 PM", // Moonset time
+    "rise": "10:46 PM", // Moonrise time (12-hour format, location-specific)
+    "set": "1:38 PM", // Moonset time (12-hour format, location-specific)
     "upperTransit": "5:40 AM" // Time when moon is highest in sky
   },
   "position": {
-    "distance": 373600, // Distance from Earth in km
-    "diameter": 1918.4, // Angular diameter in arcseconds
-    "j2000_ra": 6.8268, // Right ascension (J2000)
-    "j2000_dec": 27.7461, // Declination (J2000)
-    "subsolar_lon": -74.803, // Subsolar longitude
+    "distance": 373600, // Distance from Earth
+    "distanceUnit": "km",
+    "diameter": 1918.4, // Angular diameter
+    "diameterUnit": "arcseconds",
+    "j2000_ra": 6.8268, // Right ascension J2000
+    "j2000_dec": 27.7461, // Declination J2000
+    "subsolar_lon": -74.803, // Subsolar longitude - where Sun is overhead
     "subsolar_lat": -0.868, // Subsolar latitude
-    "subearth_lon": 6.491, // Sub-Earth longitude
-    "subearth_lat": -6.154, // Sub-Earth latitude
-    "posangle": 4.259 // Position angle
+    "subearth_lon": 6.491, // Sub-Earth longitude - libration
+    "subearth_lat": -6.154, // Sub-Earth latitude - libration
+    "posangle": 4.259, // Position angle of north polar axis
+    "angleUnit": "degrees"
   },
   "images": {
     "standard": {
@@ -310,20 +315,21 @@ Retrieves comprehensive moon data including phase information, imagery, rise/set
       "height": 730
     },
     "highres": {
-      // High-resolution 5760x3240 image
+      // High-resolution 5760x3240 annotated image
       "url": "https://...",
       "width": 5760,
       "height": 3240
     },
     "south_up": {
       /* ... */
-    }, // South-up orientation
+    }, // South-up orientation (730x730)
     "south_up_highres": {
       /* ... */
-    }
+    } // South-up high-res (5760x3240)
   },
   "nextPhase": "Last Quarter on 13 October 2025",
-  "obscuration": 0,
+  "obscuration": 0, // Percentage inside Earth's umbra (0 except during eclipses)
+  "obscurationUnit": "%",
   "location": {
     "latitude": 40.69,
     "longitude": -73.98
@@ -332,6 +338,43 @@ Retrieves comprehensive moon data including phase information, imagery, rise/set
   "time": "2025-10-13T02:08"
 }
 ```
+
+**Field Descriptions:**
+
+**Phase Information:**
+
+- `phase.percent` - Illuminated percentage of the moon as seen from Earth (0.00 = new moon, 100.00 = full moon)
+- `phase.name` - Current moon phase name (e.g., "Waning Gibbous", "First Quarter")
+- `phase.illumination` - Percentage of moon's visible disk illuminated (%)
+- `phase.age` - Age in days since the start of the current lunar cycle
+
+**Times:**
+
+- `times.rise` - Moonrise time in 12-hour format, specific to the provided location
+- `times.set` - Moonset time in 12-hour format, specific to the provided location
+- `times.upperTransit` - Time when the moon reaches its highest point in the sky
+
+**Position:**
+
+- `position.distance` - Distance from Earth to Moon (kilometers)
+- `position.diameter` - Angular diameter of the moon as it appears from Earth (arcseconds)
+- `position.j2000_ra` - J2000 right ascension of the moon (degrees)
+- `position.j2000_dec` - J2000 declination of the moon (degrees)
+- `position.subsolar_lon/lat` - Longitude and latitude where the Sun is directly overhead on the moon (degrees)
+- `position.subearth_lon/lat` - Longitude and latitude where Earth appears directly overhead on the moon; defines libration (degrees)
+- `position.posangle` - Position angle of the north polar axis; tilt relative to north celestial pole, measured counterclockwise (degrees)
+
+**Images:**
+
+- `images.standard` - Standard 730x730px moon image at the requested timestamp
+- `images.highres` - High-resolution 5760x3240px annotated moon image
+- `images.south_up` - South-up orientation version of standard image (730x730px)
+- `images.south_up_highres` - South-up orientation version of high-res image (5760x3240px)
+
+**Other:**
+
+- `obscuration` - Percentage of the moon inside Earth's umbra shadow (only non-zero during lunar eclipses)
+- `nextPhase` - Description and date of the next primary moon phase
 
 **Examples:**
 

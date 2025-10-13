@@ -201,7 +201,9 @@ async function getMoonData(lat = null, lon = null) {
         percent: nasaMoonData.phase,
         name: usnoData.phase,
         illumination: usnoData.illumination,
+        illuminationUnit: '%',
         age: nasaMoonData.age,
+        ageUnit: 'days',
       },
       // Rise, set, and transit times
       times: {
@@ -212,7 +214,9 @@ async function getMoonData(lat = null, lon = null) {
       // Position and distance
       position: {
         distance: nasaMoonData.distance,
+        distanceUnit: 'km',
         diameter: nasaMoonData.diameter,
+        diameterUnit: 'arcseconds',
         j2000_ra: nasaMoonData.j2000_ra,
         j2000_dec: nasaMoonData.j2000_dec,
         subsolar_lon: nasaMoonData.subsolar_lon,
@@ -220,6 +224,7 @@ async function getMoonData(lat = null, lon = null) {
         subearth_lon: nasaMoonData.subearth_lon,
         subearth_lat: nasaMoonData.subearth_lat,
         posangle: nasaMoonData.posangle,
+        angleUnit: 'degrees',
       },
       // Images
       images: {
@@ -231,6 +236,7 @@ async function getMoonData(lat = null, lon = null) {
       // Additional information
       nextPhase: usnoData.primaryPhase,
       obscuration: nasaMoonData.obscuration,
+      obscurationUnit: '%',
       // Metadata
       location: {
         latitude,
