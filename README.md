@@ -7,6 +7,7 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 - **Space Weather Data**: Solar flares, coronal mass ejections (CMEs), and solar energetic particles (SEPs)
 - **Earth Imagery**: Latest satellite images of Earth from NASA's EPIC API
 - **Sun Images**: High-resolution solar imagery from multiple wavelengths using Helioviewer API
+- **Moon Data**: Real-time moon phase, imagery, rise/set times, and position data
 - **Near Earth Objects**: Asteroid and comet data from NASA's NEO API
 - **Space Flight Data**: Upcoming rocket launches, space events, and launch vehicle configurations from The Space Devs API
 - **Satellite Tracking**: Find satellites passing above a specific location using the N2YO API.
@@ -18,8 +19,9 @@ A Node.js Express server that provides access to NASA space data APIs with intel
 
 - **Node.js** with ES modules
 - **Express.js** web framework
-- **NASA, Helioviewer, N2YO, & The Space Devs APIs** for space data
+- **NASA, Helioviewer, USNO, N2YO, & The Space Devs APIs** for space data
 - **Custom caching system** for performance optimization
+- **Cheerio** for HTML parsing
 
 ## 📋 Prerequisites
 
@@ -223,6 +225,31 @@ Retrieves Near Earth Object (asteroid and comet) data for the past week.
 GET /neos
 ```
 
+### Moon Data
+
+#### GET `/moon`
+Retrieves comprehensive moon data including phase information, high-resolution imagery, rise/set times, and position data. Combines data from NASA's Dial-a-Moon API and the US Naval Observatory.
+
+**Query Parameters:**
+- `lat` (optional): Latitude in decimal degrees. Defaults to NYC (40.69°N)
+- `lon` (optional): Longitude in decimal degrees. Defaults to NYC (-73.98°W)
+
+**Response includes:**
+- Phase information (percent, name, illumination, age)
+- Rise/set/transit times (12-hour format, location-specific)
+- Position data (distance, diameter, coordinates)
+- High-resolution images (standard and south-up orientations)
+- Next phase prediction
+
+**Examples:**
+```bash
+# Get moon data for NYC (default location)
+GET /moon
+
+# Get moon data for specific location
+GET /moon?lat=34.0522&lon=-118.2437
+```
+
 ### Space Flight Data
 
 #### GET `/spaceflight/launches`
@@ -340,6 +367,8 @@ This API integrates with several space data APIs:
 - **NASA DONKI API**: Solar flares, CMEs, and SEPs
 - **NASA EPIC API**: Earth imagery
 - **Helioviewer API**: High-resolution solar imagery from multiple observatories (SDO, SOHO, STEREO)
+- **NASA Dial-a-Moon API**: Real-time moon imagery and phase data
+- **US Naval Observatory (USNO)**: Moon rise/set times and astronomical data
 - **NASA NEO API**: Near Earth Objects
 - **The Space Devs API**: Space flight data including launches, events, and launch vehicles
 - **N2YO API**: Satellite tracking and orbital data
@@ -403,6 +432,12 @@ curl "http://localhost:3102/sun/wavelengths"
 
 # Get sun data sources
 curl "http://localhost:3102/sun/datasources"
+
+# Get moon data for NYC (default location)
+curl "http://localhost:3102/moon"
+
+# Get moon data for specific location
+curl "http://localhost:3102/moon?lat=34.0522&lon=-118.2437"
 
 # Get satellites above NYC (default location)
 curl "http://localhost:3102/satellites-above"
@@ -477,6 +512,16 @@ const wavelengths = await wavelengthsResponse.json();
 // Get sun data sources
 const sunDataSourcesResponse = await fetch('http://localhost:3102/sun/datasources');
 const sunDataSources = await sunDataSourcesResponse.json();
+
+// Get moon data
+const moonResponse = await fetch('http://localhost:3102/moon');
+const moonData = await moonResponse.json();
+console.log(`Moon phase: ${moonData.phase.name} (${moonData.phase.percent}%)`);
+console.log(`Moonrise: ${moonData.times.rise}, Moonset: ${moonData.times.set}`);
+
+// Get moon data for specific location
+const moonLAResponse = await fetch('http://localhost:3102/moon?lat=34.0522&lon=-118.2437');
+const moonLAData = await moonLAResponse.json();
 
 // Get satellites above specific location
 const satellitesResponse = await fetch('http://localhost:3102/satellites-above?lat=51.5074&lon=-0.1278&radius=10');

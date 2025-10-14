@@ -28,6 +28,7 @@ import {
   getUpcomingEventsCached,
   getLauncherConfigurationsCached,
 } from './modules/spaceFlight.js';
+import { getMoonDataCached } from './modules/moonData.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
 import cors from 'cors';
@@ -315,6 +316,25 @@ app.get('/neos', async (req, res) => {
   res.json(response);
 });
 
+// Moon data endpoint
+app.get('/moon', async (req, res) => {
+  console.log('Getting moon data');
+  try {
+    // Get coordinates from query params or use NYC defaults
+    const lat = req.query.lat ? parseFloat(req.query.lat) : null;
+    const lon = req.query.lon ? parseFloat(req.query.lon) : null;
+
+    const response = await getMoonDataCached(lat, lon);
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching moon data:', error);
+    res.status(500).json({
+      error: 'Failed to fetch moon data',
+      message: error.message,
+    });
+  }
+});
+
 let lastSatellitesAboveRequestTime = 0;
 
 app.get('/satellites-above', async (req, res) => {
@@ -520,6 +540,14 @@ app.get('/status', (req, res) => {
       cacheDuration: '24 hours',
       apiSource: 'Helioviewer API',
       endpoint: '/sun/datasources',
+    },
+    moon: {
+      name: 'Moon Data',
+      description: 'Moon imagery, phase, rise/set times, and illumination data',
+      refreshInterval: 'On demand',
+      cacheDuration: '15 minutes',
+      apiSource: 'NASA Dial-a-Moon & US Naval Observatory',
+      endpoint: '/moon',
     },
   };
 
