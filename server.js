@@ -29,6 +29,12 @@ import {
   getLauncherConfigurationsCached,
 } from './modules/spaceFlight.js';
 import { getMoonDataCached } from './modules/moonData.js';
+import {
+  getDsnDataCached,
+  getActiveMissions,
+  getMissionDetails,
+  getDsnSummary,
+} from './modules/dsnNow.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
 import cors from 'cors';
@@ -439,6 +445,70 @@ app.get('/spaceflight/launcher-configurations', async (req, res) => {
   res.json(response);
 });
 
+// Deep Space Network Endpoints
+app.get('/dsn', async (req, res) => {
+  console.log('Getting DSN data');
+  try {
+    const response = await getDsnDataCached();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching DSN data:', error);
+    res.status(500).json({
+      error: 'Failed to fetch DSN data',
+      message: error.message,
+    });
+  }
+});
+
+app.get('/dsn/summary', async (req, res) => {
+  console.log('Getting DSN summary');
+  try {
+    const response = await getDsnSummary();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching DSN summary:', error);
+    res.status(500).json({
+      error: 'Failed to fetch DSN summary',
+      message: error.message,
+    });
+  }
+});
+
+app.get('/dsn/missions', async (req, res) => {
+  console.log('Getting active DSN missions');
+  try {
+    const response = await getActiveMissions();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching active DSN missions:', error);
+    res.status(500).json({
+      error: 'Failed to fetch active DSN missions',
+      message: error.message,
+    });
+  }
+});
+
+app.get('/dsn/mission/:name', async (req, res) => {
+  const missionName = req.params.name;
+  console.log(`Getting details for mission: ${missionName}`);
+  try {
+    const response = await getMissionDetails(missionName);
+    if (response.connections.length === 0) {
+      return res.status(404).json({
+        error: 'Mission not found or not currently active on DSN',
+        message: `No active connections found for mission: ${missionName}`,
+      });
+    }
+    res.json(response);
+  } catch (error) {
+    console.error(`Error fetching mission details for ${missionName}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch mission details',
+      message: error.message,
+    });
+  }
+});
+
 app.get('/dmstodecimals', (req, res) => {
   const dmsString = req.query.dms;
   if (!dmsString) {
@@ -550,6 +620,15 @@ app.get('/status', (req, res) => {
       cacheDuration: '15 minutes',
       apiSource: 'NASA Dial-a-Moon & US Naval Observatory',
       endpoint: '/moon',
+    },
+    dsnNowData: {
+      name: 'Deep Space Network Status',
+      description:
+        "Current status of NASA's Deep Space Network and tracked missions",
+      refreshInterval: 'On demand',
+      cacheDuration: '1 minute',
+      apiSource: 'NASA DSN NOW API',
+      endpoint: '/dsn',
     },
   };
 
