@@ -93,6 +93,8 @@ cache.registerRefreshFunction('events', () => getUpcomingEventsCached());
 cache.registerRefreshFunction('launchVehicles', () =>
   getLauncherConfigurationsCached(),
 );
+cache.registerRefreshFunction('moonData', () => getMoonDataCached());
+
 // Note: We are not registering a global refresh function for satellites
 // because its parameters (lat, lon) are request-specific.
 // The cache for this endpoint will be populated on-demand by user requests.
