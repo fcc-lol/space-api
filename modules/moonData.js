@@ -117,13 +117,16 @@ function parseUSNOHTML(html) {
  * Fetch NASA Dial-a-Moon data
  */
 async function fetchNASAMoonData(isoTime) {
-  const url = `https://svs.gsfc.nasa.gov/api/dialamoon/${isoTime}`;
+  const nasaUrl = `https://svs.gsfc.nasa.gov/api/dialamoon/${isoTime}`;
+  const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(
+    nasaUrl,
+  )}`;
 
-  const response = await fetch(url);
+  const response = await fetch(proxyUrl);
 
   if (!response.ok) {
     throw new Error(
-      `Failed to fetch NASA moon data: ${response.status} ${response.statusText}`,
+      `Failed to fetch NASA moon data via proxy: ${response.status} ${response.statusText}`,
     );
   }
 
@@ -272,7 +275,7 @@ export async function getMoonDataCached(lat = null, lon = null) {
 
   if (!response) {
     response = await getMoonData(latitude, longitude);
-    cache.set(cacheKey, response, 15 * 60); // Cache for 15 minutes (in seconds)
+    cache.set(cacheKey, response, 15 * 60 * 1000); // Cache for 15 minutes
   }
 
   return response;
@@ -306,7 +309,7 @@ export async function getNASAMoonDataCached() {
 
   if (!response) {
     response = await fetchNASAMoonData(isoTime);
-    cache.set(cacheKey, response, 15 * 60); // Cache for 15 minutes (in seconds)
+    cache.set(cacheKey, response, 15 * 60 * 1000); // Cache for 15 minutes
   }
 
   return response;
@@ -338,7 +341,7 @@ export async function getUSNOMoonDataCached(lat = null, lon = null) {
 
   if (!response) {
     response = await fetchUSNOMoonData(dateStr, latitude, longitude);
-    cache.set(cacheKey, response, 60 * 60); // Cache for 1 hour (in seconds)
+    cache.set(cacheKey, response, 60 * 60 * 1000); // Cache for 1 hour
   }
 
   return response;
