@@ -188,6 +188,20 @@ Generates a custom PNG screenshot of the sun with specified dimensions.
 - `height` (optional): Screenshot height in pixels. Defaults to 1024
 - `imageScale` (optional): Image scale in arcseconds per pixel. Defaults to 2.4204409
 
+**Available Wavelengths:**
+- `171`: Quiet corona and coronal holes (171 Å)
+- `193`: Corona and hot flare plasma (193 Å)
+- `211`: Active regions (211 Å)
+- `304`: Chromosphere and transition region (304 Å)
+- `335`: Active regions (335 Å)
+- `94`: Flaring regions (94 Å)
+- `131`: Flaring regions (131 Å)
+- `1600`: Transition region (1600 Å)
+- `1700`: Temperature minimum and photosphere (1700 Å)
+- `4500`: Photosphere (4500 Å)
+- `continuum`: HMI Continuum - Photosphere
+- `magnetogram`: HMI Magnetogram - Magnetic field
+
 **Example:**
 ```bash
 GET /sun/image?width=512&height=512&wavelength=304
@@ -195,6 +209,20 @@ GET /sun/image?width=512&height=512&wavelength=304
 
 #### GET `/sun/wavelengths`
 Retrieves available solar observation wavelengths and their descriptions.
+
+**Response:**
+```json
+{
+  "available_wavelengths": ["171", "193", "211", "304", "335", "94", "131", "1600", "1700", "4500", "continuum", "magnetogram"],
+  "wavelength_info": [
+    {
+      "wavelength": "171",
+      "description": "Quiet corona and coronal holes (171 Å)"
+    },
+    ...
+  ]
+}
+```
 
 **No parameters required.**
 
