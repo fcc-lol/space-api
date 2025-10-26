@@ -137,8 +137,17 @@ async function fetchNASAMoonData(isoTime) {
  * Fetch USNO moon data
  */
 async function fetchUSNOMoonData(dateStr, lat, lon) {
-  // EST is UTC-5, EDT is UTC-4 - using EST as default
-  const tzOffset = -5;
+  // Determine the current timezone offset for America/New_York
+  // This automatically accounts for DST (EST is UTC-5, EDT is UTC-4)
+  const testDate = new Date(dateStr + 'T12:00:00');
+  const utcDate = new Date(
+    testDate.toLocaleString('en-US', { timeZone: 'UTC' }),
+  );
+  const nycDate = new Date(
+    testDate.toLocaleString('en-US', { timeZone: 'America/New_York' }),
+  );
+  const tzOffset = (nycDate - utcDate) / (1000 * 60 * 60); // Offset in hours
+
   const tzSign = tzOffset < 0 ? -1 : 1;
   const tzAbs = Math.abs(tzOffset);
 
