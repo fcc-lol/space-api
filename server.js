@@ -29,6 +29,13 @@ import {
   getLauncherConfigurationsCached,
 } from './modules/spaceFlight.js';
 import { getMoonDataCached } from './modules/moonData.js';
+import {
+  getSolarWindCached,
+  getKpCurrentCached,
+  getKpForecastCached,
+  getOvationCached,
+  getAuroraSummaryCached,
+} from './modules/aurora.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
 import cors from 'cors';
@@ -94,6 +101,8 @@ cache.registerRefreshFunction('launchVehicles', () =>
   getLauncherConfigurationsCached(),
 );
 cache.registerRefreshFunction('moonData', () => getMoonDataCached());
+cache.registerRefreshFunction('aurora_kp_forecast', () => getKpForecastCached());
+cache.registerRefreshFunction('aurora_ovation', () => getOvationCached());
 
 // Note: We are not registering a global refresh function for satellites
 // because its parameters (lat, lon) are request-specific.
@@ -448,6 +457,54 @@ app.get('/dmstodecimals', (req, res) => {
   res.json(decimalCoords);
 });
 
+// Aurora / space weather routes
+app.get('/aurora', async (req, res) => {
+  console.log('Getting aurora summary');
+  try {
+    const response = await getAuroraSummaryCached();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching aurora summary:', error);
+    res.status(500).json({ error: 'Failed to fetch aurora data', message: error.message });
+  }
+});
+
+app.get('/aurora/solar-wind', async (req, res) => {
+  console.log('Getting solar wind data');
+  try {
+    const response = await getSolarWindCached();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching solar wind:', error);
+    res.status(500).json({ error: 'Failed to fetch solar wind data', message: error.message });
+  }
+});
+
+app.get('/aurora/kp', async (req, res) => {
+  console.log('Getting Kp index');
+  try {
+    const [current, forecast] = await Promise.all([
+      getKpCurrentCached(),
+      getKpForecastCached(),
+    ]);
+    res.json({ current, forecast });
+  } catch (error) {
+    console.error('Error fetching Kp index:', error);
+    res.status(500).json({ error: 'Failed to fetch Kp data', message: error.message });
+  }
+});
+
+app.get('/aurora/ovation', async (req, res) => {
+  console.log('Getting OVATION aurora data');
+  try {
+    const response = await getOvationCached();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching OVATION data:', error);
+    res.status(500).json({ error: 'Failed to fetch OVATION data', message: error.message });
+  }
+});
+
 // Add a cache status endpoint for debugging
 app.get('/cache/status', (req, res) => {
   res.json(cache.getStatus());
@@ -550,6 +607,38 @@ app.get('/status', (req, res) => {
       cacheDuration: '15 minutes',
       apiSource: 'NASA Dial-a-Moon & US Naval Observatory',
       endpoint: '/moon',
+    },
+    aurora_solar_wind: {
+      name: 'Solar Wind',
+      description: 'Real-time solar wind speed, density, pressure, and IMF Bz from DSCOVR',
+      refreshInterval: 'On demand',
+      cacheDuration: '1 minute',
+      apiSource: 'NOAA SWPC',
+      endpoint: '/aurora/solar-wind',
+    },
+    aurora_kp_current: {
+      name: 'Kp Index (Current)',
+      description: 'Planetary geomagnetic activity index, updated every minute',
+      refreshInterval: 'On demand',
+      cacheDuration: '1 minute',
+      apiSource: 'NOAA SWPC',
+      endpoint: '/aurora/kp',
+    },
+    aurora_kp_forecast: {
+      name: 'Kp Forecast',
+      description: '3-day Kp index forecast with observed, estimated, and predicted values',
+      refreshInterval: '15 minutes',
+      cacheDuration: '1 hour',
+      apiSource: 'NOAA SWPC',
+      endpoint: '/aurora/kp',
+    },
+    aurora_ovation: {
+      name: 'OVATION Aurora Forecast',
+      description: 'OVATION Prime aurora probability grid — hemispheric aurora intensity at 1° resolution',
+      refreshInterval: '15 minutes',
+      cacheDuration: '5 minutes',
+      apiSource: 'NOAA SWPC',
+      endpoint: '/aurora/ovation',
     },
   };
 
