@@ -9,6 +9,8 @@ const URLS = {
   kpIndex: `${NOAA_BASE}/json/planetary_k_index_1m.json`,
   kpForecast: `${NOAA_BASE}/products/noaa-planetary-k-index-forecast.json`,
   ovation: `${NOAA_BASE}/json/ovation_aurora_latest.json`,
+  dst1Hour: `${NOAA_BASE}/json/geospace/geospace_dst_1_hour.json`,
+  goesMagnetometer1Day: `${NOAA_BASE}/json/goes/primary/magnetometers-1-day.json`
 };
 
 const CACHE_DURATIONS = {
@@ -16,6 +18,8 @@ const CACHE_DURATIONS = {
   kpCurrent: 1 * 60 * 1000,   // 1 minute
   kpForecast: 60 * 60 * 1000, // 1 hour
   ovation: 5 * 60 * 1000,     // 5 minutes
+  dst: 10 * 60 * 1000,        // 10 minutes
+  goes: 1 * 60 * 1000,        // 1 minute
 };
 
 /**
@@ -171,6 +175,22 @@ async function fetchOvation() {
   return await res.json();
 }
 
+async function fetchGeospaceDst() {
+  const res = await fetch(URLS.dst1Hour);
+  if (!res.ok) throw new Error(`Dst fetch failed: ${res.status}`);
+  const data = await res.json();
+  // Return the most recent entry
+  return data[data.length - 1];
+}
+
+async function fetchGOESMagnetometer() {
+  const res = await fetch(URLS.goesMagnetometer1Day);
+  if (!res.ok) throw new Error(`GOES fetch failed: ${res.status}`);
+  const data = await res.json();
+  // Return the most recent entry
+  return data[data.length - 1];
+}
+
 // ---------------------------------------------------------------------------
 // Cached exports
 // ---------------------------------------------------------------------------
@@ -215,14 +235,36 @@ export async function getOvationCached() {
   return data;
 }
 
+export async function getGeospaceDstCached() {
+  const key = 'aurora_dst';
+  let data = cache.get(key);
+  if (!data) {
+    data = await fetchGeospaceDst();
+    cache.set(key, data, CACHE_DURATIONS.dst);
+  }
+  return data;
+}
+
+export async function getGOESMagnetometerCached() {
+  const key = 'aurora_goes';
+  let data = cache.get(key);
+  if (!data) {
+    data = await fetchGOESMagnetometer();
+    cache.set(key, data, CACHE_DURATIONS.goes);
+  }
+  return data;
+}
+
 /**
- * Combined aurora summary — solar wind + current Kp together.
+ * Combined aurora and global geomagnetic summary.
  * Avoids fetching the large OVATION grid unless explicitly requested.
  */
 export async function getAuroraSummaryCached() {
-  const [solarWind, kp] = await Promise.all([
+  const [solarWind, kp, dst, goes] = await Promise.all([
     getSolarWindCached(),
     getKpCurrentCached(),
+    getGeospaceDstCached(),
+    getGOESMagnetometerCached()
   ]);
 
   const bz = solarWind.magneticField.bz;
@@ -231,6 +273,8 @@ export async function getAuroraSummaryCached() {
     timestamp: new Date().toISOString(),
     solarWind,
     kp,
+    dst,
+    goes,
     conditions: {
       kpIndex: kp.kpIndex,
       estimatedKp: kp.estimatedKp,

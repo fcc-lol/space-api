@@ -5,7 +5,7 @@ import {
   getKpCurrentCached,
   getKpForecastCached,
   getOvationCached,
-} from './modules/aurora.js';
+} from './modules/geoMagnetic.js';
 
 const BASE_URL = 'http://localhost:3102';
 

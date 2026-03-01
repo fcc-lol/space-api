@@ -35,7 +35,7 @@ import {
   getKpForecastCached,
   getOvationCached,
   getAuroraSummaryCached,
-} from './modules/aurora.js';
+} from './modules/geoMagnetic.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
 import cors from 'cors';
