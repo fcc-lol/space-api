@@ -35,6 +35,7 @@ import {
   getKpForecastCached,
   getOvationCached,
   getAuroraSummaryCached,
+  getHistoricalKpCached,
 } from './modules/geoMagnetic.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
@@ -506,6 +507,25 @@ app.get('/aurora/ovation', async (req, res) => {
   } catch (error) {
     console.error('Error fetching OVATION data:', error);
     res.status(500).json({ error: 'Failed to fetch OVATION data', message: error.message });
+  }
+});
+
+app.get('/aurora/historical', async (req, res) => {
+  console.log('Getting historical aurora data: ', req.query.date);
+  const date = req.query.date;
+  if (!date || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {
+    return res.status(400).json({ error: 'Missing or invalid date parameter. Use YYYY-MM-DD format.' });
+  }
+  res.set('Cache-Control', 'public, max-age=86400');
+  try {
+    const response = await getHistoricalKpCached(date);
+    if (!response) {
+      return res.status(404).json({ error: 'No data found for this date' });
+    }
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching historical aurora data:', error);
+    res.status(500).json({ error: 'Failed to fetch historical aurora data', message: error.message });
   }
 });
 

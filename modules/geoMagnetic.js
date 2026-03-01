@@ -10,7 +10,8 @@ const URLS = {
   kpForecast: `${NOAA_BASE}/products/noaa-planetary-k-index-forecast.json`,
   ovation: `${NOAA_BASE}/json/ovation_aurora_latest.json`,
   dst1Hour: `${NOAA_BASE}/json/geospace/geospace_dst_1_hour.json`,
-  goesMagnetometer1Day: `${NOAA_BASE}/json/goes/primary/magnetometers-1-day.json`
+  goesMagnetometer1Day: `${NOAA_BASE}/json/goes/primary/magnetometers-1-day.json`,
+  gfzPotsdam: `https://kp.gfz.de/app/json/`
 };
 
 const CACHE_DURATIONS = {
@@ -20,6 +21,7 @@ const CACHE_DURATIONS = {
   ovation: 5 * 60 * 1000,     // 5 minutes
   dst: 10 * 60 * 1000,        // 10 minutes
   goes: 1 * 60 * 1000,        // 1 minute
+  historicalKp: 24 * 60 * 60 * 1000, // 24 hours
 };
 
 /**
@@ -191,6 +193,32 @@ async function fetchGOESMagnetometer() {
   return data[data.length - 1];
 }
 
+async function fetchHistoricalKp(dateStr) {
+  const url = `${URLS.gfzPotsdam}?start=${dateStr}T00:00:00Z&end=${dateStr}T23:59:59Z&index=Kp`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`GFZ Potsdam fetch failed: ${res.status}`);
+  const data = await res.json();
+  
+  if (!data.Kp || data.Kp.length === 0) {
+    return null;
+  }
+  
+  // Find max Kp for the day to determine overall G-value
+  const maxKp = Math.max(...data.Kp);
+  const info = describeKp(maxKp);
+  
+  return {
+    date: dateStr,
+    maxKp,
+    storm: info.storm,
+    visibility: info.visibility,
+    data: data.datetime.map((time, i) => ({
+      timestamp: time,
+      kp: data.Kp[i]
+    }))
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Cached exports
 // ---------------------------------------------------------------------------
@@ -251,6 +279,16 @@ export async function getGOESMagnetometerCached() {
   if (!data) {
     data = await fetchGOESMagnetometer();
     cache.set(key, data, CACHE_DURATIONS.goes);
+  }
+  return data;
+}
+
+export async function getHistoricalKpCached(dateStr) {
+  const key = `aurora_historical_${dateStr}`;
+  let data = cache.get(key);
+  if (!data) {
+    data = await fetchHistoricalKp(dateStr);
+    cache.set(key, data, CACHE_DURATIONS.historicalKp);
   }
   return data;
 }
