@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
 import cache from './cache.js';
+import majorEventsData from './major-events.json' with { type: 'json' };
 
 const NOAA_BASE = 'https://services.swpc.noaa.gov';
 
@@ -322,4 +323,8 @@ export async function getAuroraSummaryCached() {
       bzValue: bz,
     },
   };
+}
+
+export function getMajorEvents() {
+  return [...majorEventsData].sort((a, b) => new Date(a.date) - new Date(b.date));
 }

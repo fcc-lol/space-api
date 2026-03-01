@@ -1,0 +1,86 @@
+[
+  {
+    "name": "Gannon Storm",
+    "date": "2024-05-10",
+    "g_value": 5,
+    "notes": "First G5 in 20 years. Aurora visible as far south as Florida and Mexico. Named after physicist Jennifer Gannon."
+  },
+  {
+    "name": "October 2024 Storm",
+    "date": "2024-10-10",
+    "g_value": 4,
+    "notes": "Aurora visible over NYC, Chicago, and as far south as Florida."
+  },
+  {
+    "name": "New Year's Storm",
+    "date": "2025-01-01",
+    "g_value": 4,
+    "notes": "CMEs from Dec 29 hit Earth on Dec 31/Jan 1, G4 lasting 9+ hours. Aurora seen as far south as Mexico."
+  },
+  {
+    "name": "June 2025 Storm",
+    "date": "2025-06-02",
+    "g_value": 4,
+    "notes": "G4 watch issued following powerful CME on May 30."
+  },
+  {
+    "name": "November 2025 Storm",
+    "date": "2025-11-12",
+    "g_value": 4,
+    "notes": "G3 observed, G4 expected. Triggered by one of the strongest flares of Solar Cycle 25 on Nov 11."
+  },
+  {
+    "name": "Halloween Storms",
+    "date": "2003-10-29",
+    "g_value": 5,
+    "notes": "Series of extreme storms Oct 29–Nov 4. X17 and X28 flares. Power outages in Sweden, satellite damage."
+  },
+  {
+    "name": "Quebec Storm",
+    "date": "1989-03-13",
+    "g_value": 5,
+    "notes": "Caused 9-hour blackout across Quebec. Aurora seen as far south as Texas and Florida."
+  },
+  {
+    "name": "May 2005 Storm",
+    "date": "2005-05-15",
+    "g_value": 5,
+    "notes": "G5 storm following X-class flares. Final G5 before May 2024."
+  },
+  {
+    "name": "August 2005 Storm",
+    "date": "2005-08-24",
+    "g_value": 5,
+    "notes": "Second G5 event of 2005."
+  },
+  {
+    "name": "September 2005 Storm",
+    "date": "2005-09-11",
+    "g_value": 5,
+    "notes": "Third G5 event of 2005, the last series before Solar Cycle 25."
+  },
+  {
+    "name": "St. Patrick's Day Storm",
+    "date": "2015-03-17",
+    "g_value": 4,
+    "notes": "Largest storm of Solar Cycle 24. Triggered without a major X-class flare — a coronal hole stream event."
+  },
+  {
+    "name": "Starlink Storm",
+    "date": "2022-02-03",
+    "g_value": 3,
+    "notes": "G3 storm caused SpaceX to lose up to 40 Starlink satellites shortly after launch."
+  },
+  {
+    "name": "September 2017 Storm",
+    "date": "2017-09-07",
+    "g_value": 3,
+    "notes": "G3 storm coinciding with intense X-class flare period. Radio blackouts across the US."
+  },
+  {
+    "name": "November 2003 Storm",
+    "date": "2003-11-20",
+    "g_value": 5,
+    "notes": "Tail end of Halloween storm series. Intense aurora at very low latitudes."
+  }
+]

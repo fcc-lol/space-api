@@ -36,6 +36,7 @@ import {
   getOvationCached,
   getAuroraSummaryCached,
   getHistoricalKpCached,
+  getMajorEvents,
 } from './modules/geoMagnetic.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
@@ -513,7 +514,7 @@ app.get('/aurora/ovation', async (req, res) => {
 app.get('/aurora/historical', async (req, res) => {
   console.log('Getting historical aurora data: ', req.query.date);
   const date = req.query.date;
-  if (!date || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return res.status(400).json({ error: 'Missing or invalid date parameter. Use YYYY-MM-DD format.' });
   }
   res.set('Cache-Control', 'public, max-age=86400');
@@ -526,6 +527,18 @@ app.get('/aurora/historical', async (req, res) => {
   } catch (error) {
     console.error('Error fetching historical aurora data:', error);
     res.status(500).json({ error: 'Failed to fetch historical aurora data', message: error.message });
+  }
+});
+
+app.get('/aurora/major-events', (req, res) => {
+  console.log('Getting major aurora events');
+  res.set('Cache-Control', 'public, max-age=86400');
+  try {
+    const response = getMajorEvents();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching major events:', error);
+    res.status(500).json({ error: 'Failed to fetch major events', message: error.message });
   }
 });
 
