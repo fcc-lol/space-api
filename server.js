@@ -460,6 +460,7 @@ app.get('/dmstodecimals', (req, res) => {
 // Aurora / space weather routes
 app.get('/aurora', async (req, res) => {
   console.log('Getting aurora summary');
+  res.set('Cache-Control', 'no-store');
   try {
     const response = await getAuroraSummaryCached();
     res.json(response);
@@ -471,6 +472,7 @@ app.get('/aurora', async (req, res) => {
 
 app.get('/aurora/solar-wind', async (req, res) => {
   console.log('Getting solar wind data');
+  res.set('Cache-Control', 'no-store');
   try {
     const response = await getSolarWindCached();
     res.json(response);
@@ -482,6 +484,7 @@ app.get('/aurora/solar-wind', async (req, res) => {
 
 app.get('/aurora/kp', async (req, res) => {
   console.log('Getting Kp index');
+  res.set('Cache-Control', 'no-store');
   try {
     const [current, forecast] = await Promise.all([
       getKpCurrentCached(),
@@ -496,6 +499,7 @@ app.get('/aurora/kp', async (req, res) => {
 
 app.get('/aurora/ovation', async (req, res) => {
   console.log('Getting OVATION aurora data');
+  res.set('Cache-Control', 'no-store');
   try {
     const response = await getOvationCached();
     res.json(response);
