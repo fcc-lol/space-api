@@ -124,8 +124,12 @@ class Cache {
     for (const [key, refreshFunc] of this.refreshFunctions) {
       try {
         console.log(`Refreshing cache for: ${key}`);
-        const freshData = await refreshFunc();
-        this.set(key, freshData);
+        // Delete existing cache so inner fetchers don't get a cache hit
+        this.cache.delete(key);
+        this.timestamps.delete(key);
+        
+        await refreshFunc(); // The refresh function will internally call cache.set()
+        
         console.log(`Successfully refreshed cache for: ${key}`);
       } catch (error) {
         console.error(`Failed to refresh cache for ${key}:`, error);
@@ -144,8 +148,12 @@ class Cache {
 
     try {
       console.log(`Force refreshing cache for: ${key}`);
-      const freshData = await refreshFunc();
-      this.set(key, freshData);
+      // Delete existing cache so inner fetchers don't get a cache hit
+      this.cache.delete(key);
+      this.timestamps.delete(key);
+
+      const freshData = await refreshFunc(); // The refresh function will internally call cache.set()
+      
       console.log(`Successfully refreshed cache for: ${key}`);
       return freshData;
     } catch (error) {

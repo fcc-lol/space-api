@@ -19,7 +19,7 @@ const CACHE_DURATIONS = {
   solarWind: 1 * 60 * 1000,   // 1 minute — data updates every minute
   kpCurrent: 1 * 60 * 1000,   // 1 minute
   kpForecast: 60 * 60 * 1000, // 1 hour
-  ovation: 5 * 60 * 1000,     // 5 minutes
+  ovation: 60 * 1000,     // 1 minute
   dst: 10 * 60 * 1000,        // 10 minutes
   goes: 1 * 60 * 1000,        // 1 minute
   historicalKp: 24 * 60 * 60 * 1000, // 24 hours
