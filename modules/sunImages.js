@@ -202,7 +202,8 @@ export const getSunImage = async (date = 'latest', wavelength = '171') => {
   return imageBuffer;
 };
 
-// Take a custom screenshot of the sun with specified parameters
+// Take a custom screenshot of the sun with specified parameters.
+// Returns { imageBuffer, observationDate } so callers know the actual image time.
 export const getSunScreenshot = async (
   date = 'latest',
   wavelength = '171',
@@ -217,6 +218,22 @@ export const getSunScreenshot = async (
     }
 
     const targetDate = formatDateForHelioviewer(date);
+
+    // Query getClosestImage first to learn the actual observation date
+    let observationDate = null;
+    try {
+      const metaUrl = `${API_BASE_URL}/getClosestImage/?date=${targetDate}&sourceId=${sourceId}`;
+      const metaRes = await fetch(metaUrl);
+      if (metaRes.ok) {
+        const meta = await metaRes.json();
+        if (meta && meta.date) {
+          // meta.date is like "2026-03-06 00:32:45"
+          observationDate = meta.date.replace(' ', 'T') + 'Z';
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch image observation date:', e.message);
+    }
 
     const layers = `[${sourceId},1,100]`; // [sourceId, visible, opacity]
 
@@ -234,13 +251,12 @@ export const getSunScreenshot = async (
     // Check content type
     const contentType = response.headers.get('content-type');
     if (contentType && !contentType.includes('image/png')) {
-      // If not PNG, it might be an error response in JSON
       const errorText = await response.text();
       throw new Error(`Screenshot API error: ${errorText}`);
     }
 
     const imageBuffer = await response.arrayBuffer();
-    return imageBuffer;
+    return { imageBuffer, observationDate };
   } catch (error) {
     console.error('Error taking sun screenshot:', error);
     throw error;
@@ -281,6 +297,16 @@ export const getSunImageMetadataCached = async (
   return response;
 };
 
+export const getSunScreenshotCached = async (wavelength = '193', width = 1024, height = 1024) => {
+  const key = `sun_screenshot_${wavelength}_${width}x${height}`;
+  let data = cache.get(key);
+  if (!data) {
+    data = await getSunScreenshot('latest', wavelength, width, height);
+    cache.set(key, data, 10 * 60 * 1000); // 10 minutes
+  }
+  return data; // { imageBuffer, observationDate }
+};
+
 export const getSunDataSourcesCached = async () => {
   const cacheKey = 'sun_data_sources';
   let response = cache.get(cacheKey);
@@ -297,6 +323,173 @@ export const getSunDataSourcesCached = async () => {
 // Helper function to list available wavelengths
 export const getAvailableWavelengths = () => {
   return Object.keys(DEFAULT_SOURCES);
+};
+
+// --- Solar Regions (SWPC solar_regions.json) ---
+
+const SWPC_REGIONS_URL = 'https://services.swpc.noaa.gov/json/solar_regions.json';
+
+function parseLocation(locationStr) {
+  if (!locationStr) return { lat: null, lon: null };
+  const m = locationStr.match(/^([NS])([\d.]+)([EW])([\d.]+)$/i);
+  if (!m) return { lat: null, lon: null };
+  const lat = (m[1].toUpperCase() === 'N' ? 1 : -1) * parseFloat(m[2]);
+  const lon = (m[3].toUpperCase() === 'E' ? 1 : -1) * parseFloat(m[4]);
+  return { lat, lon };
+}
+
+export const fetchSolarRegions = async (targetDatetime = null) => {
+  const response = await fetch(SWPC_REGIONS_URL);
+  if (!response.ok) {
+    throw new Error(`SWPC solar_regions fetch failed: ${response.status}`);
+  }
+  const raw = await response.json();
+
+  // Extract just the date part for filtering (YYYY-MM-DD)
+  const targetDate = targetDatetime ? targetDatetime.split('T')[0] : null;
+
+  // If a specific date is requested, filter to that date.
+  // Otherwise, return the most recent data available.
+  let entries;
+  if (targetDate) {
+    entries = raw.filter((r) => r.observed_date === targetDate);
+    // Fall back to closest earlier date if exact date not found
+    if (entries.length === 0) {
+      const allDates = [...new Set(raw.map((r) => r.observed_date))].sort();
+      const fallbackDate = allDates.reverse().find((d) => d <= targetDate) || allDates[0];
+      entries = raw.filter((r) => r.observed_date === fallbackDate);
+    }
+  } else {
+    // Default: most recent date
+    const allDates = [...new Set(raw.map((r) => r.observed_date))].sort();
+    const latestDate = allDates[allDates.length - 1];
+    entries = raw.filter((r) => r.observed_date === latestDate);
+  }
+
+  const seen = new Map();
+  for (const r of entries) {
+    const key = r.region;
+    if (!seen.has(key) || r.observed_date > seen.get(key).observed_date) {
+      seen.set(key, r);
+    }
+  }
+
+  // If we have an exact target time, we can calculate how much the sun has rotated
+  // between the observation time (00:00 UTC) and the image time, to align the markers perfectly!
+  const targetTimeMs = targetDatetime && targetDatetime.includes('T') ? new Date(targetDatetime).getTime() : null;
+
+  const regions = Array.from(seen.values()).map((r) => {
+    const parsed = parseLocation(r.location);
+    const lat = r.latitude ?? parsed.lat;
+    let lon = r.longitude ?? parsed.lon;
+
+    // Apply solar rotation interpolation
+    if (targetTimeMs && r.observed_date && lat !== null && lon !== null) {
+      const obsTimeMs = new Date(r.observed_date + 'T00:00:00Z').getTime();
+      const diffHours = (targetTimeMs - obsTimeMs) / (1000 * 60 * 60);
+
+      // Solar synodic rotation approx 13.2 deg/day.
+      // Exact calculation using differential rotation:
+      // omega_synodic = 14.713 - 2.396 * sin^2(lat) - 1.787 * sin^4(lat) - 0.9856
+      const latRad = (lat * Math.PI) / 180;
+      const sin2 = Math.pow(Math.sin(latRad), 2);
+      const synodicDegPerDay = 14.713 - 2.396 * sin2 - 1.787 * sin2 * sin2 - 0.9856;
+      const degPerHour = synodicDegPerDay / 24;
+
+      // Westward is negative longitude, so subtract the rotation amount
+      lon = lon - (degPerHour * diffHours);
+    }
+
+    return {
+      region: r.region,
+      latitude: lat,
+      longitude: lon,
+      location: r.location || null,
+      area: r.area ?? null,
+      numSpots: r.number_spots ?? null,
+      magClass: r.mag_class || null,
+      spotClass: r.spot_class || null,
+      flareProbability: {
+        c: r.c_flare_probability ?? 0,
+        m: r.m_flare_probability ?? 0,
+        x: r.x_flare_probability ?? 0,
+      },
+      observedDate: r.observed_date || null,
+    };
+  });
+  return { regions, fetchedAt: new Date().toISOString(), observedDate: entries[0]?.observed_date || targetDate };
+};
+
+export const getSolarRegionsCached = async (targetDate = null) => {
+  const dateKey = targetDate || 'latest';
+  const key = `sun_regions_${dateKey}`;
+  let data = cache.get(key);
+  if (!data) {
+    data = await fetchSolarRegions(targetDate);
+    cache.set(key, data, 30 * 60 * 1000); // 30 minutes
+  }
+  return data;
+};
+
+// --- Solar Events (SWPC edited_events.json) ---
+
+const SWPC_EVENTS_URL = 'https://services.swpc.noaa.gov/json/edited_events.json';
+
+const EVENT_TYPE_NAMES = {
+  EPL: 'Eruptive Prominence',
+  DSF: 'Filament Disappearance',
+  FIL: 'Filament',
+};
+
+export const fetchSolarEvents = async (types = ['EPL', 'DSF', 'FIL']) => {
+  const response = await fetch(SWPC_EVENTS_URL);
+  if (!response.ok) {
+    throw new Error(`SWPC edited_events fetch failed: ${response.status}`);
+  }
+  const raw = await response.json();
+  const typeSet = new Set(types.map((t) => t.toUpperCase()));
+
+  // Only include events from the last 48 hours — older events are unreliable
+  // because the sun rotates ~13.2°/day, making old coordinates inaccurate.
+  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
+  const events = raw
+    .filter((e) => {
+      if (!typeSet.has((e.type || '').toUpperCase())) return false;
+      if (!e.location) return false;
+      // Filter out old events
+      const beginTime = e.begin_datetime
+        ? e.begin_datetime + (e.begin_datetime.endsWith('Z') ? '' : 'Z')
+        : null;
+      if (beginTime && beginTime < cutoff) return false;
+      return true;
+    })
+    .map((e) => {
+      const parsed = parseLocation(e.location);
+      // Convert "2026-03-06T14:22:00" → ISO 8601
+      const beginTime = e.begin_datetime
+        ? new Date(e.begin_datetime + (e.begin_datetime.endsWith('Z') ? '' : 'Z')).toISOString()
+        : null;
+      return {
+        type: (e.type || '').toUpperCase(),
+        typeName: EVENT_TYPE_NAMES[(e.type || '').toUpperCase()] || e.type,
+        beginTime,
+        latitude: parsed.lat,
+        longitude: parsed.lon,
+        location: e.location,
+      };
+    });
+  return { events, fetchedAt: new Date().toISOString() };
+};
+
+export const getSolarEventsCached = async (types = ['EPL', 'DSF', 'FIL']) => {
+  const key = `sun_events_${types.slice().sort().join(',')}`;
+  let data = cache.get(key);
+  if (!data) {
+    data = await fetchSolarEvents(types);
+    cache.set(key, data, 15 * 60 * 1000); // 15 minutes
+  }
+  return data;
 };
 
 // Helper function to get wavelength description

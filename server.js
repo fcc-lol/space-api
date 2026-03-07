@@ -7,15 +7,12 @@ import {
   getEarthImageryListCached,
 } from './modules/earthNow.js';
 import {
-  getSunImageMetadata,
-  getSunImageUrl,
-  getSunImage,
-  getSunScreenshot,
-  getSunDataSources,
-  getSunImageMetadataCached,
+  getSunScreenshotCached,
   getSunDataSourcesCached,
   getAvailableWavelengths,
   getWavelengthDescription,
+  getSolarRegionsCached,
+  getSolarEventsCached,
 } from './modules/sunImages.js';
 import {
   satellitesAboveCached,
@@ -37,6 +34,10 @@ import {
   getAuroraSummaryCached,
   getHistoricalKpCached,
   getMajorEvents,
+  getGeospaceDstHistoryCached,
+  getXrayCached,
+  getHemisphericPowerCached,
+  getStormTimelineCached,
 } from './modules/geoMagnetic.js';
 import cache from './modules/cache.js';
 import setupLog from './setup-log.json' with { type: 'json' };
@@ -257,34 +258,29 @@ app.get('/sun/imageurl', async (req, res) => {
 
 app.get('/sun/image', async (req, res) => {
   try {
-    const date = req.query.date || 'latest';
     const wavelength = req.query.wavelength || '193';
     const width = parseInt(req.query.width) || 1024;
     const height = parseInt(req.query.height) || 1024;
-    const imageScale = parseFloat(req.query.imageScale) || 2.4204409;
 
-    console.log(
-      `Taking sun screenshot for date ${date}, wavelength ${wavelength}, size ${width}x${height}`,
-    );
+    const { imageBuffer, observationDate } = await getSunScreenshotCached(wavelength, width, height);
 
-    const screenshotBuffer = await getSunScreenshot(
-      date,
-      wavelength,
-      width,
-      height,
-      imageScale,
-    );
-
-    res.set({
+    const headers = {
       'Content-Type': 'image/png',
-      'Content-Length': screenshotBuffer.byteLength,
-    });
-    res.send(Buffer.from(screenshotBuffer));
+      'Content-Length': imageBuffer.byteLength,
+      'Cache-Control': 'public, max-age=600',
+    };
+
+    // Send the actual observation date so the frontend can request matching overlay data
+    if (observationDate) {
+      headers['X-Image-Date'] = observationDate;
+      headers['Access-Control-Expose-Headers'] = 'X-Image-Date';
+    }
+
+    res.set(headers);
+    res.send(Buffer.from(imageBuffer));
   } catch (error) {
     console.error('Error taking sun screenshot:', error);
-    res
-      .status(500)
-      .json({ error: 'Failed to take sun screenshot', message: error.message });
+    res.status(500).json({ error: 'Failed to take sun screenshot', message: error.message });
   }
 });
 
@@ -322,6 +318,50 @@ app.get('/sun/wavelengths', (req, res) => {
       message: error.message,
     });
   }
+});
+
+app.get('/sun/regions', async (req, res) => {
+  try {
+    const targetDate = req.query.date || null; // e.g., '2026-03-06'
+    const data = await getSolarRegionsCached(targetDate);
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching solar regions:', error);
+    res.status(500).json({ error: 'Failed to fetch solar regions', message: error.message });
+  }
+});
+
+app.get('/sun/events', async (req, res) => {
+  try {
+    const typesParam = req.query.types || 'EPL,DSF,FIL';
+    const types = typesParam.split(',').map((t) => t.trim()).filter(Boolean);
+    const data = await getSolarEventsCached(types);
+    res.set('Cache-Control', 'public, max-age=900');
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching solar events:', error);
+    res.status(500).json({ error: 'Failed to fetch solar events', message: error.message });
+  }
+});
+
+app.get('/sun/image-params', (req, res) => {
+  const width = parseInt(req.query.width) || 1024;
+  const height = parseInt(req.query.height) || 1024;
+  // Standard Helioviewer takeScreenshot parameters
+  // imageScale = 2.4204409 arcsec/pixel, solar angular radius ~960 arcsec
+  const imageScale = 2.4204409;
+  const sunAngularRadiusArcsec = 960;
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.json({
+    width,
+    height,
+    centerX: width / 2,
+    centerY: height / 2,
+    sunRadiusPx: sunAngularRadiusArcsec / imageScale,
+    imageScale,
+    sunAngularRadiusArcsec,
+  });
 });
 
 app.get('/neos', async (req, res) => {
@@ -527,6 +567,79 @@ app.get('/aurora/historical', async (req, res) => {
   } catch (error) {
     console.error('Error fetching historical aurora data:', error);
     res.status(500).json({ error: 'Failed to fetch historical aurora data', message: error.message });
+  }
+});
+
+app.get('/aurora/dst', async (req, res) => {
+  console.log('Getting Dst history');
+  res.set('Cache-Control', 'no-store');
+  try {
+    const response = await getGeospaceDstHistoryCached();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching Dst data:', error);
+    res.status(500).json({ error: 'Failed to fetch Dst data', message: error.message });
+  }
+});
+
+app.get('/aurora/xray', async (req, res) => {
+  console.log('Getting GOES X-ray data');
+  res.set('Cache-Control', 'no-store');
+  try {
+    const response = await getXrayCached();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching X-ray data:', error);
+    res.status(500).json({ error: 'Failed to fetch X-ray data', message: error.message });
+  }
+});
+
+app.get('/aurora/hemispheric-power', async (req, res) => {
+  console.log('Getting hemispheric power index');
+  res.set('Cache-Control', 'no-store');
+  try {
+    const response = await getHemisphericPowerCached();
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching hemispheric power:', error);
+    res.status(500).json({ error: 'Failed to fetch hemispheric power data', message: error.message });
+  }
+});
+
+app.get('/aurora/storm-timeline', async (req, res) => {
+  console.log('Getting storm timeline');
+  res.set('Cache-Control', 'no-store');
+  try {
+    const response = await getStormTimelineCached();
+    res.json(response);
+  } catch (error) {
+    console.error('Error building storm timeline:', error);
+    res.status(500).json({ error: 'Failed to build storm timeline', message: error.message });
+  }
+});
+
+app.get('/aurora/active-regions', async (req, res) => {
+  try {
+    const now = new Date();
+    const start = new Date(now.getTime() - 72 * 60 * 60 * 1000);
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = now.toISOString().split('T')[0];
+
+    const flares = await fetchDataCached('solarFlares', startStr, endStr);
+    const regions = (Array.isArray(flares) ? flares : [])
+      .filter((f) => f.sourceLocation)
+      .map((f) => ({
+        classType: f.classType || null,
+        sourceLocation: f.sourceLocation,
+        peakTime: f.peakTime || f.beginTime,
+        activeRegionNum: f.activeRegionNum || null,
+      }));
+
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(regions);
+  } catch (error) {
+    console.error('Error fetching active regions:', error);
+    res.status(500).json({ error: 'Failed to fetch active regions', message: error.message });
   }
 });
 

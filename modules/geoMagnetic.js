@@ -12,16 +12,22 @@ const URLS = {
   ovation: `${NOAA_BASE}/json/ovation_aurora_latest.json`,
   dst1Hour: `${NOAA_BASE}/json/geospace/geospace_dst_1_hour.json`,
   goesMagnetometer1Day: `${NOAA_BASE}/json/goes/primary/magnetometers-1-day.json`,
+  goesXray1Day: `${NOAA_BASE}/json/goes/primary/xrays-1-day.json`,
+  hemisphericPower: `${NOAA_BASE}/text/aurora-nowcast-hemi-power.txt`,
   gfzPotsdam: `https://kp.gfz.de/app/json/`
 };
 
 const CACHE_DURATIONS = {
-  solarWind: 1 * 60 * 1000,   // 1 minute — data updates every minute
-  kpCurrent: 1 * 60 * 1000,   // 1 minute
-  kpForecast: 60 * 60 * 1000, // 1 hour
-  ovation: 60 * 1000,     // 1 minute
-  dst: 10 * 60 * 1000,        // 10 minutes
-  goes: 1 * 60 * 1000,        // 1 minute
+  solarWind: 1 * 60 * 1000,        // 1 minute — data updates every minute
+  kpCurrent: 1 * 60 * 1000,        // 1 minute
+  kpForecast: 60 * 60 * 1000,      // 1 hour
+  ovation: 60 * 1000,               // 1 minute
+  dst: 10 * 60 * 1000,              // 10 minutes
+  dstHistory: 10 * 60 * 1000,       // 10 minutes
+  xray: 1 * 60 * 1000,              // 1 minute — GOES updates continuously
+  hemisphericPower: 10 * 60 * 1000, // 10 minutes
+  stormTimeline: 5 * 60 * 1000,     // 5 minutes
+  goes: 1 * 60 * 1000,              // 1 minute
   historicalKp: 24 * 60 * 60 * 1000, // 24 hours
 };
 
@@ -194,6 +200,144 @@ async function fetchGOESMagnetometer() {
   return data[data.length - 1];
 }
 
+async function fetchGeospaceDstHistory() {
+  const res = await fetch(URLS.dst1Hour);
+  if (!res.ok) throw new Error(`Dst history fetch failed: ${res.status}`);
+  const data = await res.json();
+
+  const trend = data.map((entry) => ({
+    timestamp: entry.time_tag,
+    value: entry.dst !== undefined ? parseFloat(entry.dst) : null,
+  })).filter((e) => e.value !== null);
+
+  const current = trend.length > 0 ? trend[trend.length - 1] : null;
+
+  return {
+    current: current
+      ? { ...current, description: describeDst(current.value) }
+      : null,
+    trend,
+    unit: 'nT',
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+function describeDst(value) {
+  if (value === null) return null;
+  if (value <= -200) return 'Intense storm';
+  if (value <= -100) return 'Severe storm';
+  if (value <= -50) return 'Moderate storm conditions';
+  if (value <= -30) return 'Minor storm conditions';
+  return 'Quiet';
+}
+
+/**
+ * Classify GOES X-ray flux into NOAA flare class letter.
+ * Short-wave channel 0.1–0.8 nm in W/m².
+ */
+function classifyXray(flux) {
+  if (flux === null || flux === undefined) return null;
+  const f = parseFloat(flux);
+  if (f >= 1e-4) return 'X';
+  if (f >= 1e-5) return 'M';
+  if (f >= 1e-6) return 'C';
+  if (f >= 1e-7) return 'B';
+  return 'A';
+}
+
+async function fetchXray() {
+  const res = await fetch(URLS.goesXray1Day);
+  if (!res.ok) throw new Error(`GOES X-ray fetch failed: ${res.status}`);
+  const data = await res.json();
+
+  // Filter to the long-channel (0.1–0.8 nm) used for flare classification
+  const longChannel = data.filter(
+    (e) => e.energy === '0.1-0.8nm' && e.flux !== null,
+  );
+
+  if (longChannel.length === 0) {
+    return {
+      current: null,
+      peak24h: null,
+      activeAlert: false,
+      trend: [],
+      unit: 'W/m²',
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  const latest = longChannel[longChannel.length - 1];
+  const currentFlux = parseFloat(latest.flux);
+
+  // Find peak in the last 24 hours
+  let peakEntry = longChannel[0];
+  for (const e of longChannel) {
+    if (parseFloat(e.flux) > parseFloat(peakEntry.flux)) peakEntry = e;
+  }
+  const peakFlux = parseFloat(peakEntry.flux);
+  const peakClass = classifyXray(peakFlux);
+
+  const trend = longChannel.map((e) => ({
+    timestamp: e.time_tag,
+    flux: parseFloat(e.flux),
+    fluxClass: classifyXray(parseFloat(e.flux)),
+  }));
+
+  return {
+    current: {
+      timestamp: latest.time_tag,
+      flux: currentFlux,
+      fluxClass: classifyXray(currentFlux),
+      energy: '0.1-0.8nm',
+    },
+    peak24h: {
+      timestamp: peakEntry.time_tag,
+      flux: peakFlux,
+      fluxClass: peakClass,
+    },
+    activeAlert: peakClass === 'M' || peakClass === 'X',
+    trend,
+    unit: 'W/m²',
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+async function fetchHemisphericPower() {
+  const res = await fetch(URLS.hemisphericPower);
+  if (!res.ok) throw new Error(`Hemispheric power fetch failed: ${res.status}`);
+  const text = await res.text();
+
+  // Format: observation_time  forecast_time  north_GW  south_GW
+  // Lines starting with '#' are comments
+  const trend = text
+    .split('\n')
+    .filter((line) => line.trim() && !line.startsWith('#'))
+    .map((line) => {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 4) return null;
+      const north = parseFloat(parts[2]);
+      const south = parseFloat(parts[3]);
+      // Convert YYYY-MM-DD_HH:MM to ISO
+      const timestamp = parts[0].replace('_', 'T') + ':00Z';
+      return {
+        timestamp,
+        north: isNaN(north) ? null : north,
+        south: isNaN(south) ? null : south,
+        total: isNaN(north) || isNaN(south) ? null : north + south,
+      };
+    })
+    .filter(Boolean);
+
+  const current = trend.length > 0 ? trend[trend.length - 1] : null;
+
+  return {
+    current: current || null,
+    trend,
+    unit: 'GW',
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
 async function fetchHistoricalKp(dateStr) {
   const url = `${URLS.gfzPotsdam}?start=${dateStr}T00:00:00Z&end=${dateStr}T23:59:59Z&index=Kp`;
   const res = await fetch(url);
@@ -323,6 +467,169 @@ export async function getAuroraSummaryCached() {
       bzValue: bz,
     },
   };
+}
+
+export async function getGeospaceDstHistoryCached() {
+  const key = 'aurora_dst_history';
+  let data = cache.get(key);
+  if (!data) {
+    data = await fetchGeospaceDstHistory();
+    cache.set(key, data, CACHE_DURATIONS.dstHistory);
+  }
+  return data;
+}
+
+export async function getXrayCached() {
+  const key = 'aurora_xray';
+  let data = cache.get(key);
+  if (!data) {
+    data = await fetchXray();
+    cache.set(key, data, CACHE_DURATIONS.xray);
+  }
+  return data;
+}
+
+export async function getHemisphericPowerCached() {
+  const key = 'aurora_hemispheric_power';
+  let data = cache.get(key);
+  if (!data) {
+    data = await fetchHemisphericPower();
+    cache.set(key, data, CACHE_DURATIONS.hemisphericPower);
+  }
+  return data;
+}
+
+/**
+ * Build a 72-hour cause-and-effect storm timeline by combining:
+ * - NASA DONKI solar flares (cached)
+ * - NASA DONKI CMEs (cached)
+ * - NOAA Kp forecast (for geomagnetic storm onset detection)
+ */
+export async function buildStormTimeline() {
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - 72 * 60 * 60 * 1000);
+  const startDateStr = windowStart.toISOString().split('T')[0];
+  const endDateStr = now.toISOString().split('T')[0];
+
+  // Fetch all three sources in parallel
+  const [flares, cmes, kpForecast] = await Promise.all([
+    import('./spaceWeather.js').then((m) =>
+      m.fetchData('solarFlares', startDateStr, endDateStr).catch(() => []),
+    ),
+    import('./spaceWeather.js').then((m) =>
+      m.fetchData('CMEs', startDateStr, endDateStr).catch(() => []),
+    ),
+    getKpForecastCached().catch(() => ({ observed: [], estimated: [], predicted: [] })),
+  ]);
+
+  const events = [];
+
+  // Map flares to events
+  const flareEvents = (Array.isArray(flares) ? flares : []).map((f) => ({
+    id: `flare-${f.beginTime}`,
+    type: 'solar_flare',
+    timestamp: f.beginTime,
+    endTime: f.endTime || null,
+    classification: f.classType || null,
+    description: `${f.classType || 'Solar'} class flare${f.activeRegionNum ? ` from AR${f.activeRegionNum}` : ''}`,
+    causeIds: [],
+    effectIds: [],
+    confidence: 'confirmed',
+    source: 'NASA DONKI',
+    _raw: f,
+  }));
+
+  // Map CMEs to events
+  const cmeEvents = (Array.isArray(cmes) ? cmes : []).map((c) => {
+    const analysis = c.cmeAnalyses && c.cmeAnalyses[0];
+    const speed = analysis ? Math.round(analysis.speed) : null;
+    return {
+      id: `cme-${c.startTime}`,
+      type: 'cme',
+      timestamp: c.startTime,
+      endTime: null,
+      classification: speed ? `${speed} km/s` : null,
+      description: `CME${speed ? ` at ${speed} km/s` : ''}${analysis?.isMostAccurate ? ' (best fit)' : ''}`,
+      causeIds: [],
+      effectIds: [],
+      confidence: 'confirmed',
+      source: 'NASA DONKI',
+      _raw: c,
+      _predictedArrival: analysis?.time21_5 || null,
+    };
+  });
+
+  // Detect geomagnetic storms from Kp forecast (Kp >= 5)
+  const allKpEntries = [
+    ...(kpForecast.observed || []),
+    ...(kpForecast.estimated || []),
+    ...(kpForecast.predicted || []),
+  ];
+
+  const stormEntries = allKpEntries.filter((e) => parseFloat(e.kp) >= 5);
+  const stormEvents = stormEntries.map((e) => ({
+    id: `storm-${e.timestamp}`,
+    type: 'geomagnetic_storm',
+    timestamp: e.timestamp,
+    endTime: null,
+    classification: e.storm || `Kp ${e.kp}`,
+    description: `Geomagnetic storm — ${e.storm || `Kp ${Math.round(e.kp)}`}`,
+    causeIds: [],
+    effectIds: [],
+    confidence: e.type === 'observed' ? 'confirmed' : 'predicted',
+    source: 'NOAA SWPC',
+  }));
+
+  events.push(...flareEvents, ...cmeEvents, ...stormEvents);
+
+  // Link flares to CMEs: if a CME starts within 60 minutes after a flare
+  for (const cme of cmeEvents) {
+    const cmeTime = new Date(cme.timestamp).getTime();
+    for (const flare of flareEvents) {
+      const flareTime = new Date(flare.timestamp).getTime();
+      const diffMin = (cmeTime - flareTime) / 60000;
+      if (diffMin >= 0 && diffMin <= 60) {
+        flare.effectIds.push(cme.id);
+        cme.causeIds.push(flare.id);
+      }
+    }
+  }
+
+  // Link CMEs with predicted arrivals to storm onsets within a 12h window
+  for (const cme of cmeEvents) {
+    if (!cme._predictedArrival) continue;
+    const arrivalTime = new Date(cme._predictedArrival).getTime();
+    for (const storm of stormEvents) {
+      const stormTime = new Date(storm.timestamp).getTime();
+      const diffH = Math.abs(stormTime - arrivalTime) / 3600000;
+      if (diffH <= 12) {
+        cme.effectIds.push(storm.id);
+        storm.causeIds.push(cme.id);
+      }
+    }
+  }
+
+  // Strip internal _raw and _predictedArrival before returning
+  const cleanEvents = events
+    .map(({ _raw, _predictedArrival, ...e }) => e) // eslint-disable-line no-unused-vars
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  return {
+    windowStart: windowStart.toISOString(),
+    windowEnd: now.toISOString(),
+    events: cleanEvents,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+export async function getStormTimelineCached() {
+  const key = 'aurora_storm_timeline';
+  let data = cache.get(key);
+  if (!data) {
+    data = await buildStormTimeline();
+    cache.set(key, data, CACHE_DURATIONS.stormTimeline);
+  }
+  return data;
 }
 
 export function getMajorEvents() {
