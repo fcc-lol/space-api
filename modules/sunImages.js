@@ -4,7 +4,7 @@ import cache from './cache.js';
 
 dotenv.config();
 
-const API_BASE_URL = 'https://api.helioviewer.org/v2';
+const API_BASE_URL = 'https://helioviewer-api.ias.u-psud.fr/v2';
 
 // Default data sources for different sun images
 // Using popular SDO AIA wavelengths for different solar phenomena
