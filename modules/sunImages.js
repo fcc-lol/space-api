@@ -359,8 +359,13 @@ export const fetchSolarRegions = async (targetDatetime = null) => {
     // Fall back to closest earlier date if exact date not found
     if (entries.length === 0) {
       const allDates = [...new Set(raw.map((r) => r.observed_date))].sort();
-      const fallbackDate = allDates.reverse().find((d) => d <= targetDate) || allDates[0];
-      entries = raw.filter((r) => r.observed_date === fallbackDate);
+      // find the latest date that is <= targetDate
+      const fallbackDate = allDates.reverse().find((d) => d <= targetDate);
+      if (fallbackDate) {
+        entries = raw.filter((r) => r.observed_date === fallbackDate);
+      } else {
+        entries = [];
+      }
     }
   } else {
     // Default: most recent date
@@ -444,7 +449,7 @@ const EVENT_TYPE_NAMES = {
   FIL: 'Filament',
 };
 
-export const fetchSolarEvents = async (types = ['EPL', 'DSF', 'FIL']) => {
+export const fetchSolarEvents = async (types = ['EPL', 'DSF', 'FIL'], targetDate = null) => {
   const response = await fetch(SWPC_EVENTS_URL);
   if (!response.ok) {
     throw new Error(`SWPC edited_events fetch failed: ${response.status}`);
@@ -452,19 +457,31 @@ export const fetchSolarEvents = async (types = ['EPL', 'DSF', 'FIL']) => {
   const raw = await response.json();
   const typeSet = new Set(types.map((t) => t.toUpperCase()));
 
-  // Only include events from the last 48 hours — older events are unreliable
-  // because the sun rotates ~13.2°/day, making old coordinates inaccurate.
-  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  let minTime = null;
+  let maxTime = null;
+
+  if (targetDate) {
+    const d = new Date(targetDate);
+    // Include events up to 48 hours before the target date to allow for rotation
+    minTime = new Date(d.getTime() - 48 * 60 * 60 * 1000).toISOString();
+    // Allow events on the target date itself
+    maxTime = new Date(d.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  } else {
+    // Only include events from the last 48 hours if no date provided
+    minTime = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  }
 
   const events = raw
     .filter((e) => {
       if (!typeSet.has((e.type || '').toUpperCase())) return false;
       if (!e.location) return false;
-      // Filter out old events
+      // Filter out events not matching date window
       const beginTime = e.begin_datetime
         ? e.begin_datetime + (e.begin_datetime.endsWith('Z') ? '' : 'Z')
         : null;
-      if (beginTime && beginTime < cutoff) return false;
+      if (!beginTime) return false;
+      if (minTime && beginTime < minTime) return false;
+      if (maxTime && beginTime > maxTime) return false;
       return true;
     })
     .map((e) => {
@@ -485,11 +502,12 @@ export const fetchSolarEvents = async (types = ['EPL', 'DSF', 'FIL']) => {
   return { events, fetchedAt: new Date().toISOString() };
 };
 
-export const getSolarEventsCached = async (types = ['EPL', 'DSF', 'FIL']) => {
-  const key = `sun_events_${types.slice().sort().join(',')}`;
+export const getSolarEventsCached = async (types = ['EPL', 'DSF', 'FIL'], targetDate = null) => {
+  const dateKey = targetDate || 'latest';
+  const key = `sun_events_${types.slice().sort().join(',')}_${dateKey}`;
   let data = cache.get(key);
   if (!data) {
-    data = await fetchSolarEvents(types);
+    data = await fetchSolarEvents(types, targetDate);
     cache.set(key, data, 15 * 60 * 1000); // 15 minutes
   }
   return data;

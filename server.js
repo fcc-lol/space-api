@@ -337,7 +337,8 @@ app.get('/sun/events', async (req, res) => {
   try {
     const typesParam = req.query.types || 'EPL,DSF,FIL';
     const types = typesParam.split(',').map((t) => t.trim()).filter(Boolean);
-    const data = await getSolarEventsCached(types);
+    const targetDate = req.query.date || null;
+    const data = await getSolarEventsCached(types, targetDate);
     res.set('Cache-Control', 'public, max-age=900');
     res.json(data);
   } catch (error) {
