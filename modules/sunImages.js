@@ -297,12 +297,15 @@ export const getSunImageMetadataCached = async (
   return response;
 };
 
-export const getSunScreenshotCached = async (wavelength = '193', width = 1024, height = 1024) => {
-  const key = `sun_screenshot_${wavelength}_${width}x${height}`;
+export const getSunScreenshotCached = async (wavelength = '193', width = 1024, height = 1024, date = null) => {
+  const dateKey = date || 'latest';
+  const key = `sun_screenshot_${wavelength}_${width}x${height}_${dateKey}`;
   let data = cache.get(key);
   if (!data) {
-    data = await getSunScreenshot('latest', wavelength, width, height);
-    cache.set(key, data, 10 * 60 * 1000); // 10 minutes
+    data = await getSunScreenshot(dateKey, wavelength, width, height);
+    // Historical dates can be cached longer since they don't change
+    const ttl = date ? 60 * 60 * 1000 : 10 * 60 * 1000; // 1 hour for historical, 10 min for live
+    cache.set(key, data, ttl);
   }
   return data; // { imageBuffer, observationDate }
 };

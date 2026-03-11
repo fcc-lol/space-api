@@ -261,8 +261,9 @@ app.get('/sun/image', async (req, res) => {
     const wavelength = req.query.wavelength || '193';
     const width = parseInt(req.query.width) || 1024;
     const height = parseInt(req.query.height) || 1024;
+    const date = req.query.date || null;
 
-    const { imageBuffer, observationDate } = await getSunScreenshotCached(wavelength, width, height);
+    const { imageBuffer, observationDate } = await getSunScreenshotCached(wavelength, width, height, date);
 
     const headers = {
       'Content-Type': 'image/png',
