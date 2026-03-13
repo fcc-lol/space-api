@@ -14,7 +14,8 @@ const URLS = {
   goesMagnetometer1Day: `${NOAA_BASE}/json/goes/primary/magnetometers-1-day.json`,
   goesXray1Day: `${NOAA_BASE}/json/goes/primary/xrays-1-day.json`,
   hemisphericPower: `${NOAA_BASE}/text/aurora-nowcast-hemi-power.txt`,
-  gfzPotsdam: `https://kp.gfz.de/app/json/`
+  gfzPotsdam: `https://kp.gfz.de/app/json/`,
+  omniHapi: `https://cdaweb.gsfc.nasa.gov/hapi/data?id=OMNI2_H0_MRG1HR&format=json`,
 };
 
 const CACHE_DURATIONS = {
@@ -338,20 +339,108 @@ async function fetchHemisphericPower() {
   };
 }
 
+/**
+ * Fetch historical solar wind (speed, Bz, density) and Dst from NASA CDAWEB HAPI
+ * using the 1-hour merged OMNI2 dataset. Returns peak values for the day.
+ * Returns null if data is unavailable (older dates not yet archived, API down, etc.)
+ */
+async function fetchHistoricalOMNI(dateStr) {
+  const timeMin = `${dateStr}T00:00:00.000Z`;
+  const timeMax = `${dateStr}T23:59:59.999Z`;
+  const base = `${URLS.omniHapi}&time.min=${timeMin}&time.max=${timeMax}`;
+
+  // BZ_GSE1800, N1800, DST1800 work together in one request (confirmed parameter order).
+  // V1800 (solar wind speed) requires a separate request due to HAPI parameter ordering rules.
+  const [mainRes, speedRes] = await Promise.all([
+    fetch(`${base}&parameters=BZ_GSE1800,N1800,DST1800`),
+    fetch(`${base}&parameters=V1800`),
+  ]);
+
+  if (!mainRes.ok) return null;
+  const mainJson = await mainRes.json().catch(() => null);
+  if (!mainJson?.data || mainJson.data.length === 0) return null;
+
+  // Build timestamp → speed lookup from the separate V1800 query
+  const speedMap = new Map();
+  if (speedRes.ok) {
+    const speedJson = await speedRes.json().catch(() => null);
+    if (speedJson?.data) {
+      for (const [time, v] of speedJson.data) {
+        const vVal = parseFloat(v);
+        if (vVal < 9000) speedMap.set(time, vVal);
+      }
+    }
+  }
+
+  const FILL_BZ = 999.9;
+  const FILL_DENSITY = 999.9;
+  const FILL_DST = 99999;
+
+  let minBz = null;
+  let maxSpeed = null;
+  let densityAtMaxSpeed = null;
+  let minDst = null;
+  const dstTrend = [];
+
+  for (const [time, bz, density, dst] of mainJson.data) {
+    const bzVal = parseFloat(bz);
+    const densityVal = parseFloat(density);
+    const dstVal = parseFloat(dst);
+    const speedVal = speedMap.get(time) ?? null;
+
+    if (speedVal !== null && (maxSpeed === null || speedVal > maxSpeed)) {
+      maxSpeed = speedVal;
+      densityAtMaxSpeed = densityVal < FILL_DENSITY ? densityVal : null;
+    }
+
+    if (Math.abs(bzVal) < FILL_BZ && (minBz === null || bzVal < minBz)) {
+      minBz = bzVal;
+    }
+
+    if (Math.abs(dstVal) < FILL_DST) {
+      dstTrend.push({ timestamp: time, value: dstVal });
+      if (minDst === null || dstVal < minDst) {
+        minDst = dstVal;
+      }
+    }
+  }
+
+  if (maxSpeed === null && minBz === null && minDst === null) return null;
+
+  return {
+    solarWind: { speed: maxSpeed, density: densityAtMaxSpeed, bz: minBz },
+    dst: minDst !== null
+      ? {
+          current: { value: minDst, description: describeDst(minDst) },
+          trend: dstTrend,
+          unit: 'nT',
+        }
+      : null,
+  };
+}
+
 async function fetchHistoricalKp(dateStr) {
-  const url = `${URLS.gfzPotsdam}?start=${dateStr}T00:00:00Z&end=${dateStr}T23:59:59Z&index=Kp`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`GFZ Potsdam fetch failed: ${res.status}`);
-  const data = await res.json();
-  
+  const kpUrl = `${URLS.gfzPotsdam}?start=${dateStr}T00:00:00Z&end=${dateStr}T23:59:59Z&index=Kp`;
+
+  const [kpRes, flares, omni] = await Promise.all([
+    fetch(kpUrl),
+    import('./spaceWeather.js').then(m =>
+      m.fetchData('solarFlares', dateStr, dateStr).catch(() => [])
+    ),
+    fetchHistoricalOMNI(dateStr).catch(() => null),
+  ]);
+
+  if (!kpRes.ok) throw new Error(`GFZ Potsdam fetch failed: ${kpRes.status}`);
+  const data = await kpRes.json();
+
   if (!data.Kp || data.Kp.length === 0) {
     return null;
   }
-  
+
   // Find max Kp for the day to determine overall G-value
   const maxKp = Math.max(...data.Kp);
   const info = describeKp(maxKp);
-  
+
   return {
     date: dateStr,
     maxKp,
@@ -360,7 +449,9 @@ async function fetchHistoricalKp(dateStr) {
     data: data.datetime.map((time, i) => ({
       timestamp: time,
       kp: data.Kp[i]
-    }))
+    })),
+    flares: Array.isArray(flares) ? flares : [],
+    omni: omni || null,
   };
 }
 

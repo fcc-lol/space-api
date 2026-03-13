@@ -17,17 +17,20 @@ export const fetchData = async (data, startDate, endDate) => {
 
   try {
     const response = await fetch(url);
-    const data = await response.json();
-    return data;
+    if (!response.ok) throw new Error(`NASA DONKI API error: ${response.status} ${response.statusText}`);
+    const jsonData = await response.json();
+    return jsonData;
   } catch (error) {
-    console.error('Error fetching', error);
+    console.error('Error fetching NASA data:', error.message);
     throw error;
   }
 };
 
 // Cached wrapper functions
 export const fetchDataCached = async (data, startDate, endDate) => {
-  const cacheKey = data.toLowerCase();
+  const cacheKey = (startDate || endDate)
+    ? `${data.toLowerCase()}_${startDate || ''}_${endDate || ''}`
+    : data.toLowerCase();
   let response = cache.get(cacheKey);
 
   if (!response) {
