@@ -60,6 +60,53 @@ The cache singleton (`modules/cache.js`) is imported directly by each module. Ca
 | `spaceFlight.js` | The Space Devs | Launches, events, launch vehicles |
 | `satellites.js` | N2YO | Satellites above location, positions |
 
+### Utility Modules
+
+- `modules/coordinates.js` — `convertDmsToDecimal(dmsString)` parses `40°41'34.4"N 73°58'54.2"W` style strings into `{ latitude, longitude }`. Used by satellite endpoints and exposed as `GET /dmstodecimals?dms=...`.
+- `modules/dates.js` — `getDates(format)` returns `{ today, yesterday, oneWeekAgo, thirtyDaysAgo }`. `convertDateFormat(date)` converts between `YYYY-MM-DD` and `YYYY/MM/DD`.
+
+### API Routes
+
+| Route | Module | Notes |
+|---|---|---|
+| `GET /solarflares` | spaceWeather | `?startDate=&endDate=` optional |
+| `GET /sep` | spaceWeather | `?startDate=&endDate=` optional |
+| `GET /cmes` | spaceWeather | `?startDate=&endDate=` optional |
+| `GET /neos` | nearEarthObjects | |
+| `GET /moon` | moonData | `?lat=&lon=` optional |
+| `GET /satellites-above` | satellites | `?lat=&lon=` or `?dms=` |
+| `GET /satellite-positions` | satellites | `?satid=` required |
+| `GET /spaceflight/launches` | spaceFlight | |
+| `GET /spaceflight/next-launch` | spaceFlight | First result from launches |
+| `GET /spaceflight/events` | spaceFlight | |
+| `GET /spaceflight/launcher-configurations` | spaceFlight | `?search=` optional |
+| `GET /earthnow/list` | earthNow | `?date=&variant=` |
+| `GET /earthnow/image` | earthNow | Redirects to image URL |
+| `GET /earthnow/imageurl` | earthNow | Returns URL JSON |
+| `GET /earthnow/metadata` | earthNow | `?date=&variant=&index=` |
+| `GET /sun/image` | sunImages | `?wavelength=&width=&height=&date=`; returns PNG with `X-Image-Date` header |
+| `GET /sun/regions` | sunImages | `?date=` optional |
+| `GET /sun/events` | sunImages | `?types=EPL,DSF,FIL&date=` |
+| `GET /sun/wavelengths` | sunImages | Static list |
+| `GET /sun/image-params` | sunImages | Returns pixel geometry for sun disc overlay |
+| `GET /aurora` | geoMagnetic | Combined summary |
+| `GET /aurora/solar-wind` | geoMagnetic | |
+| `GET /aurora/kp` | geoMagnetic | Combined current + forecast |
+| `GET /aurora/ovation` | geoMagnetic | OVATION aurora probability grid |
+| `GET /aurora/historical` | geoMagnetic | `?date=YYYY-MM-DD` required |
+| `GET /aurora/dst` | geoMagnetic | |
+| `GET /aurora/xray` | geoMagnetic | GOES X-ray flux |
+| `GET /aurora/hemispheric-power` | geoMagnetic | |
+| `GET /aurora/storm-timeline` | geoMagnetic | |
+| `GET /aurora/active-regions` | geoMagnetic | Derived from flares (72h window) |
+| `GET /aurora/major-events` | geoMagnetic | Static hardcoded list |
+| `GET /dmstodecimals` | coordinates | `?dms=` |
+| `GET /status` | server | Full server/cache/activity status |
+| `GET /status-page` | server | Serves `status-page.html` |
+| `GET /cache/status` | cache | |
+| `GET /cache/item` | cache | `?key=` |
+| `POST /cache/refresh` | cache | Body: `{ key }` (omit for all) |
+
 ### NOAA Data Parsing
 
 NOAA SWPC returns array-of-arrays where the first row is headers. `geoMagnetic.js` has a helper `parseHeaderedArray(data)` to convert to an array of objects.
