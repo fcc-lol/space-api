@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
+import SunCalc from 'suncalc';
 import cache from './cache.js';
 import { convertDmsToDecimal } from './coordinates.js';
 
@@ -114,23 +115,24 @@ function parseUSNOHTML(html) {
 }
 
 /**
- * Fetch NASA Dial-a-Moon data
+ * Compute moon data locally using suncalc (replaces NASA dial-a-moon API which is unreachable)
  */
-async function fetchNASAMoonData(isoTime) {
-  const nasaUrl = `https://svs.gsfc.nasa.gov/api/dialamoon/${isoTime}`;
-  const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(
-    nasaUrl,
-  )}`;
+function computeMoonData(date, lat, lon) {
+  const illum = SunCalc.getMoonIllumination(date);
+  const pos = SunCalc.getMoonPosition(date, lat, lon);
 
-  const response = await fetch(proxyUrl);
+  // Synodic month = 29.53059 days; phase 0=new, 0.5=full
+  const age = illum.phase * 29.53059;
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch NASA moon data via proxy: ${response.status} ${response.statusText}`,
-    );
-  }
+  // Angular diameter in arcseconds: moon radius 1737.4 km
+  const diameter = 2 * Math.atan(1737.4 / pos.distance) * (180 / Math.PI) * 3600;
 
-  return await response.json();
+  return {
+    phase: Math.round(illum.fraction * 100),
+    age: parseFloat(age.toFixed(2)),
+    distance: Math.round(pos.distance),
+    diameter: parseFloat(diameter.toFixed(2)),
+  };
 }
 
 /**
@@ -200,56 +202,32 @@ async function getMoonData(lat = null, lon = null) {
   const dateStr = `${year}-${month}-${day}`;
 
   try {
-    // Fetch both data sources in parallel
-    const [nasaMoonData, usnoData] = await Promise.all([
-      fetchNASAMoonData(isoTime),
+    const [moonCalc, usnoData] = await Promise.all([
+      Promise.resolve(computeMoonData(now, latitude, longitude)),
       fetchUSNOMoonData(dateStr, latitude, longitude),
     ]);
 
-    // Combine both data sources into a semantic structure
     return {
-      // Phase information (from both sources)
       phase: {
-        percent: nasaMoonData.phase,
+        percent: moonCalc.phase,
         name: usnoData.phase,
-        illumination: usnoData.illumination,
+        illumination: usnoData.illumination ?? moonCalc.phase,
         illuminationUnit: '%',
-        age: nasaMoonData.age,
+        age: moonCalc.age,
         ageUnit: 'days',
       },
-      // Rise, set, and transit times
       times: {
         rise: usnoData.rise,
         set: usnoData.set,
         upperTransit: usnoData.upperTransit,
       },
-      // Position and distance
       position: {
-        distance: nasaMoonData.distance,
+        distance: moonCalc.distance,
         distanceUnit: 'km',
-        diameter: nasaMoonData.diameter,
+        diameter: moonCalc.diameter,
         diameterUnit: 'arcseconds',
-        j2000_ra: nasaMoonData.j2000_ra,
-        j2000_dec: nasaMoonData.j2000_dec,
-        subsolar_lon: nasaMoonData.subsolar_lon,
-        subsolar_lat: nasaMoonData.subsolar_lat,
-        subearth_lon: nasaMoonData.subearth_lon,
-        subearth_lat: nasaMoonData.subearth_lat,
-        posangle: nasaMoonData.posangle,
-        angleUnit: 'degrees',
       },
-      // Images
-      images: {
-        standard: nasaMoonData.image,
-        highres: nasaMoonData.image_highres,
-        south_up: nasaMoonData.su_image,
-        south_up_highres: nasaMoonData.su_image_highres,
-      },
-      // Additional information
       nextPhase: usnoData.primaryPhase,
-      obscuration: nasaMoonData.obscuration,
-      obscurationUnit: '%',
-      // Metadata
       location: {
         latitude,
         longitude,
@@ -291,36 +269,20 @@ export async function getMoonDataCached(lat = null, lon = null) {
 }
 
 /**
- * Get just NASA moon data (without USNO)
+ * Get just computed moon data (formerly NASA dial-a-moon)
  */
 export async function getNASAMoonDataCached() {
-  // Get current time in NYC timezone
   const now = new Date();
-  const nycTime = new Date(
-    now.toLocaleString('en-US', { timeZone: 'America/New_York' }),
-  );
-
-  // Format: YYYY-MM-DDTHH:MM
-  const year = nycTime.getFullYear();
-  const month = String(nycTime.getMonth() + 1).padStart(2, '0');
-  const day = String(nycTime.getDate()).padStart(2, '0');
-  const hours = String(nycTime.getHours()).padStart(2, '0');
-  const minutes = String(nycTime.getMinutes()).padStart(2, '0');
-  const isoTime = `${year}-${month}-${day}T${hours}:${minutes}`;
-
-  // Round to 15-minute intervals for caching
   const roundedMinutes = Math.floor(now.getMinutes() / 15) * 15;
   const cacheTime = new Date(now);
   cacheTime.setMinutes(roundedMinutes, 0, 0);
-  const cacheKey = `nasa_moon_${cacheTime.getTime()}`;
+  const cacheKey = `moon_calc_${cacheTime.getTime()}`;
 
   let response = cache.get(cacheKey);
-
   if (!response) {
-    response = await fetchNASAMoonData(isoTime);
-    cache.set(cacheKey, response, 15 * 60 * 1000); // Cache for 15 minutes
+    response = computeMoonData(now, DEFAULT_COORDS.latitude, DEFAULT_COORDS.longitude);
+    cache.set(cacheKey, response, 15 * 60 * 1000);
   }
-
   return response;
 }
 
