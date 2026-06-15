@@ -121,17 +121,19 @@ function computeMoonData(date, lat, lon) {
   const illum = SunCalc.getMoonIllumination(date);
   const pos = SunCalc.getMoonPosition(date, lat, lon);
 
-  // Synodic month = 29.53059 days; phase 0=new, 0.5=full
   const age = illum.phase * 29.53059;
-
-  // Angular diameter in arcseconds: moon radius 1737.4 km
   const diameter = 2 * Math.atan(1737.4 / pos.distance) * (180 / Math.PI) * 3600;
+  // illum.angle is the position angle of the bright limb (radians)
+  const posangle = illum.angle * (180 / Math.PI);
+  const obscuration = (1 - illum.fraction) * 100;
 
   return {
     phase: Math.round(illum.fraction * 100),
     age: parseFloat(age.toFixed(2)),
     distance: Math.round(pos.distance),
     diameter: parseFloat(diameter.toFixed(2)),
+    posangle: parseFloat(posangle.toFixed(2)),
+    obscuration: parseFloat(obscuration.toFixed(2)),
   };
 }
 
@@ -226,7 +228,11 @@ async function getMoonData(lat = null, lon = null) {
         distanceUnit: 'km',
         diameter: moonCalc.diameter,
         diameterUnit: 'arcseconds',
+        posangle: moonCalc.posangle,
+        angleUnit: 'degrees',
       },
+      obscuration: moonCalc.obscuration,
+      obscurationUnit: '%',
       nextPhase: usnoData.primaryPhase,
       location: {
         latitude,
